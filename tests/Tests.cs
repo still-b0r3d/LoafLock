@@ -30,6 +30,7 @@ namespace LoafLock.Tests
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
             Application.ThreadException += (s, e) => { Console.WriteLine("FAIL  a window threw: " + e.Exception); Environment.Exit(3); };
             AppDomain.CurrentDomain.UnhandledException += (s, e) => { Console.WriteLine("FAIL  crashed: " + e.ExceptionObject); Environment.Exit(3); };
+            if (args.Length == 2 && args[0] == "--shots") return TakeShots(args[1]);
 
             string home = Path.Combine(Path.GetTempPath(), "LoafLockTests-" + Guid.NewGuid().ToString("N"));
             Settings.Dir = home;
@@ -52,6 +53,11 @@ namespace LoafLock.Tests
             Run("word: near misses still count ('aaab' unlocks 'aab')", WordNearMisses);
             Run("word: a held key's repeats don't type it; no word, no unlock", WordNeedsFreshPresses);
             Run("hook: the real hook blocks, renews itself and lets go", LiveHook);
+            Run("counts: today starts over each day; saved and read back", CountsByDay);
+            Run("start with Windows: on, off, and what it runs", StartupEntry);
+            Run("pop-up: shows without taking focus, lets clicks through, fades", PopupNeverTakesFocus);
+            Run("window: follows the lock, the word and the counts", WindowFollowsTheLock);
+            Run("remove my settings: the folder and the sign-in entry go", RemoveSettingsForgetsAll);
 
             try { Directory.Delete(home, true); } catch { }
             Console.WriteLine();

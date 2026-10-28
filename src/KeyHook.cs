@@ -65,6 +65,7 @@ namespace LoafLock
         public string Word { set { word = value ?? ""; } }
         public bool Installed { get { return installed; } }
         public int Rehooks { get { return rehooks; } }
+        public int Blocked { get { return Volatile.Read(ref gate.Blocked); } }  // fresh presses dropped, all told
 
         public void Lock() { Post(CmdLock); }
         public void Unlock() { Post(CmdUnlock); }

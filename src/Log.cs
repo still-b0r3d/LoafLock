@@ -9,10 +9,14 @@ namespace LoafLock
     {
         static readonly object Lock = new object();
 
+        // set once "Remove my settings" has cleared the folder, so nothing writes it again
+        public static bool Off;
+
         public static string FilePath { get { return Path.Combine(Settings.Dir, "LoafLock.log"); } }
 
         public static void Write(string message)
         {
+            if (Off) return;
             lock (Lock)
             {
                 try

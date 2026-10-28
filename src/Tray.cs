@@ -4,7 +4,6 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
-using Microsoft.Win32;
 
 namespace LoafLock
 {
@@ -18,106 +17,101 @@ namespace LoafLock
         }
     }
 
-    // Rukus in the taskbar corner, with a gold padlock while the keyboard is locked. Right-click
-    // for Lock / Unlock and the unlock word.
+    // Rukus in the taskbar corner, with a gold padlock while the keyboard is locked. A left
+    // click opens the LoafLock window; a right click has Lock / Unlock and the paws blocked.
     sealed class Tray : IDisposable
     {
-        readonly Settings settings;
-        readonly KeyHook hook = new KeyHook(new KeyGate(), false);
+        readonly Locker locker;
         readonly NotifyIcon icon = new NotifyIcon();
         readonly Icon unlocked = AppIcons.Load("loaflock.ico", SystemInformation.SmallIconSize);
         readonly Icon locked = AppIcons.Load("loaflock-locked.ico", SystemInformation.SmallIconSize);
-        readonly ToolStripMenuItem lockItem, wordItem;
-        readonly SynchronizationContext ui;
-        bool isLocked, asking;
+        readonly ToolStripMenuItem lockItem, countItem;
+        readonly Popup popup = new Popup();
+        readonly EventWaitHandle showRequests = Instance.ShowRequests();
+        readonly System.Windows.Forms.Timer tick = new System.Windows.Forms.Timer { Interval = 500 };
+        MainForm window;
+        bool? shownLocked;
 
-        public Tray(Settings settings)
+        // quiet: started with Windows, so no window unless there's no unlock word yet
+        public Tray(Settings settings, bool quiet)
         {
-            this.settings = settings;
             var menu = new ContextMenuStrip { ShowImageMargin = false };
-            ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();  // the menu, a control, sets it up
+            locker = new Locker(settings, new KeyHook(new KeyGate(), false));
+
             menu.Items.Add(new ToolStripMenuItem(Program.VersionText) { Enabled = false });
             menu.Items.Add(new ToolStripSeparator());
-            lockItem = new ToolStripMenuItem("Lock keyboard", null, delegate { LockOrUnlock(); });
-            lockItem.Font = new Font(menu.Font, FontStyle.Bold);
+            var open = new ToolStripMenuItem("Open LoafLock", null, delegate { OpenWindow(); });
+            open.Font = new Font(menu.Font, FontStyle.Bold);
+            menu.Items.Add(open);
+            lockItem = new ToolStripMenuItem("Lock keyboard", null, delegate { locker.LockOrUnlock(OpenWindowOrNull(), "tray menu"); });
             menu.Items.Add(lockItem);
-            wordItem = new ToolStripMenuItem("Change unlock word…", null, delegate { AskForWord(); });
-            menu.Items.Add(wordItem);
+            countItem = new ToolStripMenuItem("") { Enabled = false };
+            menu.Items.Add(countItem);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Quit LoafLock", null, delegate { Log.Write("quit from the tray"); Application.ExitThread(); });
             icon.ContextMenuStrip = menu;
+            icon.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) OpenWindow(); };
 
-            hook.Word = settings.UnlockWord;
-            hook.LockChanged += nowLocked => ui.Post(delegate { Show(nowLocked); }, null);
-            hook.Failed += message => ui.Post(delegate { MessageBox.Show(message, "LoafLock", MessageBoxButtons.OK, MessageBoxIcon.Warning); }, null);
-            hook.Note += line => ui.Post(delegate { Log.Write(line); }, null);  // the hook's thread never writes files
-            // the hook gets installed afresh when the PC wakes up or someone signs back in
-            SystemEvents.PowerModeChanged += PowerModeChanged;
-            SystemEvents.SessionSwitch += SessionSwitched;
+            locker.Changed += Show;
+            locker.KeysBlocked += delegate
+            {
+                if (settings.Popup) popup.Nudge("Type your unlock word to get it back.\nPaws blocked today: " + locker.Today.ToString("N0"));
+            };
+            locker.Failed += message => MessageBox.Show(message, "LoafLock", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            // LoafLock.exe opened again: show this copy's window
+            tick.Tick += delegate { if (showRequests.WaitOne(0)) OpenWindow(); };
+            tick.Start();
 
-            Show(false);
+            Show();
             icon.Visible = true;
-            if (!settings.HasWord) ui.Post(delegate { AskForWord(); }, null);  // first run, once the app is up
-        }
-
-        void Show(bool nowLocked)
-        {
-            if (isLocked != nowLocked) Log.Write(nowLocked ? "locked" : "unlocked");
-            isLocked = nowLocked;
-            icon.Icon = nowLocked ? locked : unlocked;
-            icon.Text = nowLocked ? "LoafLock: keyboard locked" : "LoafLock: keyboard unlocked";
-            lockItem.Text = nowLocked ? "Unlock keyboard" : "Lock keyboard";
-            wordItem.Enabled = !nowLocked;  // nobody can type a new one while locked anyway
-        }
-
-        void LockOrUnlock()
-        {
-            if (isLocked)
+            if (!quiet || !settings.HasWord)
             {
-                Log.Write("unlock from the tray menu");
-                hook.Unlock();
-                return;
-            }
-            if (!settings.HasWord && !AskForWord()) return;
-            hook.Lock();
-        }
-
-        // first run, and "Change unlock word…": true once there's a word
-        bool AskForWord()
-        {
-            if (asking) return false;
-            asking = true;
-            try
-            {
-                using (var form = new WordForm(settings.UnlockWord))
+                locker.Post(delegate  // once LoafLock is up and running
                 {
-                    if (form.ShowDialog() != DialogResult.OK) return settings.HasWord;
-                    settings.UnlockWord = form.Word;
-                }
-                try { settings.Save(); }
-                catch (Exception e) { Log.Write("couldn't save settings.ini: " + e.Message); }
-                hook.Word = settings.UnlockWord;
-                Log.Write("unlock word set");  // never the word itself
-                return true;
+                    OpenWindow();
+                    if (!settings.HasWord) locker.AskForWord(window);  // the first run
+                });
             }
-            finally { asking = false; }
         }
 
-        void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
+        void Show()
         {
-            if (e.Mode == PowerModes.Resume) hook.Rehook();
+            bool isLocked = locker.IsLocked;
+            if (shownLocked != isLocked)
+            {
+                shownLocked = isLocked;
+                icon.Icon = isLocked ? locked : unlocked;
+                lockItem.Text = isLocked ? "Unlock keyboard" : "Lock keyboard";
+            }
+            string tip = isLocked ? "LoafLock: keyboard locked · " + locker.Today.ToString("N0") + " paws blocked today" : "LoafLock: keyboard unlocked";
+            if (tip.Length > 63) tip = tip.Substring(0, 63);  // the most Windows takes
+            if (icon.Text != tip) icon.Text = tip;
+            countItem.Text = "Paws blocked: " + locker.Today.ToString("N0") + " today · " + locker.Total.ToString("N0") + " all time";
         }
 
-        void SessionSwitched(object sender, SessionSwitchEventArgs e)
+        // the window, when it's up, for a word prompt to go over
+        IWin32Window OpenWindowOrNull()
         {
-            if (e.Reason == SessionSwitchReason.SessionUnlock || e.Reason == SessionSwitchReason.ConsoleConnect) hook.Rehook();
+            return window != null && !window.IsDisposed && window.Visible ? window : null;
+        }
+
+        void OpenWindow()
+        {
+            if (window == null || window.IsDisposed) window = new MainForm(locker);
+            window.Show();
+            if (window.WindowState == FormWindowState.Minimized) window.WindowState = FormWindowState.Normal;
+            window.Activate();
         }
 
         public void Dispose()
         {
-            SystemEvents.PowerModeChanged -= PowerModeChanged;
-            SystemEvents.SessionSwitch -= SessionSwitched;
-            hook.Dispose();
+            tick.Stop();
+            tick.Dispose();
+            showRequests.Dispose();
+            locker.Changed -= Show;
+            if (window != null) window.Dispose();
+            popup.Dispose();
+            locker.Dispose();
             icon.Visible = false;
             icon.Dispose();
             unlocked.Dispose();

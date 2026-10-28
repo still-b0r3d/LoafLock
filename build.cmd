@@ -18,6 +18,14 @@ if not exist "%CSC%" (
     exit /b 1
 )
 
+rem A running LoafLock.exe can't be replaced: say so plainly instead of a compiler error.
+if exist bin\LoafLock.exe (
+    2>nul (>>bin\LoafLock.exe call ) || (
+        echo LoafLock is running from bin\LoafLock.exe. Quit it first: right-click Rukus, Quit LoafLock.
+        exit /b 1
+    )
+)
+
 rem The build stamp: the commit GitHub builds from (its first 7 characters), or "dev" for a
 rem build made anywhere else. The exe shows it as "LoafLock v0.1 - Build: abc1234".
 set "BUILD=dev"

@@ -13,6 +13,10 @@ namespace LoafLock
         // what was typed, as LoafLock keeps it
         public string Word { get { return box.Text.Trim().ToLowerInvariant(); } }
 
+        // the screenshot tool shows it off screen without taking focus
+        internal bool Quiet = false;
+        protected override bool ShowWithoutActivation { get { return Quiet; } }
+
         public WordForm(string current)
         {
             SuspendLayout();

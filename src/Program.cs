@@ -1,6 +1,8 @@
 // LoafLock: locks the keyboard so a cat lying on it can't type. The mouse keeps working.
 //
-//   LoafLock.exe            sits in the taskbar corner as Rukus; right-click him to lock
+//   LoafLock.exe            sits in the taskbar corner as Rukus and opens its window; opened
+//                           again while running, it brings up the running one's window
+//   LoafLock.exe --startup  the same without the window (how Windows starts it at sign-in)
 //   LoafLock.exe --version  print the version
 using System;
 using System.Runtime.InteropServices;
@@ -40,15 +42,20 @@ namespace LoafLock
                 return 0;
             }
 
-            // one LoafLock per sign-in; starting it again does nothing
+            // one LoafLock per sign-in; opening it again brings up the running one's window
+            bool quiet = cmd == "--startup";
             bool first;
-            using (var one = new Mutex(true, @"Local\LoafLock", out first))
+            using (var one = new Mutex(true, Instance.MutexName, out first))
             {
-                if (!first) return 0;
+                if (!first)
+                {
+                    if (!quiet) Instance.AskToShow();
+                    return 0;
+                }
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Log.Write("started " + VersionText);
-                using (new Tray(Settings.Load())) Application.Run();
+                Log.Write("started " + VersionText + (quiet ? " with Windows" : ""));
+                using (new Tray(Settings.Load(), quiet)) Application.Run();
                 Log.Write("quit");
             }
             return 0;
