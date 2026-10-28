@@ -25,10 +25,14 @@ namespace LoafLock.Tests
             s.AddBlocked(1, tuesday);
             Check(s.TodayCount(tuesday) == 1 && s.BlockedTotal == 6, "Tuesday's count is " + s.TodayCount(tuesday) + ", all time " + s.BlockedTotal + ", expected 1 and 6");
 
-            s.Popup = false;
+            Check(s.NoteOnLock && !s.NoteOnKeys && !s.StartMinimized, "the note and start-minimized defaults are wrong");
+            s.NoteOnLock = false;
+            s.NoteOnKeys = true;
+            s.StartMinimized = true;
             s.Save();
             Settings back = Settings.Load();
-            Check(!back.Popup && back.BlockedTotal == 6 && back.TodayCount(tuesday) == 1, "the counts or the pop-up setting didn't come back");
+            Check(back.BlockedTotal == 6 && back.TodayCount(tuesday) == 1, "the counts didn't come back");
+            Check(!back.NoteOnLock && back.NoteOnKeys && back.StartMinimized, "the note or start-minimized options didn't come back");
             File.WriteAllText(Settings.FilePath, "blocked_total=-4\r\nblocked_today=lots\r\nblocked_day=yesterday\r\n");
             back = Settings.Load();
             Check(back.BlockedTotal == 0 && back.BlockedToday == 0 && back.BlockedDay == "", "nonsense counts were read");
@@ -62,7 +66,7 @@ namespace LoafLock.Tests
             using (var popup = new Popup { HoldMs = 300 })
             {
                 IntPtr before = GetForegroundWindow();
-                popup.Nudge("Type your unlock word to get it back.\nPaws blocked today: 1");
+                popup.Nudge("Keyboard locked", "Type your unlock word to get it back.", true);
                 Pump(() => popup.Opacity >= 0.9, "the note didn't fade in");
                 Check(popup.Visible, "the note isn't showing");
                 Check(GetForegroundWindow() == before, "the note took focus");
@@ -71,6 +75,14 @@ namespace LoafLock.Tests
                 Check((style & WS_EX_TRANSPARENT) != 0 && (style & WS_EX_LAYERED) != 0, "clicks don't go through the note");
                 Pump(() => !popup.Visible, "the note didn't fade out");
             }
+        }
+
+        static void WindowAtStart()
+        {
+            Check(Tray.OpensWindowAtStart(false, false, true), "a plain start didn't open the window");
+            Check(!Tray.OpensWindowAtStart(false, true, true), "start minimized still opened the window");
+            Check(!Tray.OpensWindowAtStart(true, false, true), "starting with Windows opened the window");
+            Check(Tray.OpensWindowAtStart(true, true, false), "the first run didn't open the window to ask for the word");
         }
 
         static void WindowFollowsTheLock()

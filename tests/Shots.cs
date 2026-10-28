@@ -33,8 +33,12 @@ namespace LoafLock.Tests
                 }
                 using (var popup = new Popup())
                 {
-                    popup.Line = "Type your unlock word to get it back.\nPaws blocked today: 212";
-                    Shoot(popup, Path.Combine(folder, "popup.png"));
+                    popup.Set("Keyboard locked", "Type your unlock word to get it back.", true);
+                    Shoot(popup, Path.Combine(folder, "note-locked.png"));
+                    popup.Set("Keyboard unlocked", "Paws blocked today: 212", false);
+                    Shoot(popup, Path.Combine(folder, "note-unlocked.png"));
+                    popup.Set("Keyboard's locked", "Type your unlock word to get it back.\nPaws blocked today: 212", true);
+                    Shoot(popup, Path.Combine(folder, "note-on-a-key.png"));
                 }
                 using (var word = new WordForm("") { Quiet = true })
                 {

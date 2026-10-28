@@ -32,7 +32,7 @@ namespace LoafLock
         MainForm window;
         bool? shownLocked;
 
-        // quiet: started with Windows, so no window unless there's no unlock word yet
+        // quiet: started with Windows, so no window (see OpensWindowAtStart)
         public Tray(Settings settings, bool quiet)
         {
             var menu = new ContextMenuStrip { ShowImageMargin = false };
@@ -53,9 +53,15 @@ namespace LoafLock
             icon.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) OpenWindow(); };
 
             locker.Changed += Show;
+            locker.LockedChanged += nowLocked =>
+            {
+                if (!settings.NoteOnLock) return;
+                if (nowLocked) popup.Nudge("Keyboard locked", "Type your unlock word to get it back.", true);
+                else popup.Nudge("Keyboard unlocked", "Paws blocked today: " + locker.Today.ToString("N0"), false);
+            };
             locker.KeysBlocked += delegate
             {
-                if (settings.Popup) popup.Nudge("Type your unlock word to get it back.\nPaws blocked today: " + locker.Today.ToString("N0"));
+                if (settings.NoteOnKeys) popup.Nudge("Keyboard's locked", "Type your unlock word to get it back.\nPaws blocked today: " + locker.Today.ToString("N0"), true);
             };
             locker.Failed += message => MessageBox.Show(message, "LoafLock", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             // LoafLock.exe opened again: show this copy's window
@@ -64,7 +70,7 @@ namespace LoafLock
 
             Show();
             icon.Visible = true;
-            if (!quiet || !settings.HasWord)
+            if (OpensWindowAtStart(quiet, settings.StartMinimized, settings.HasWord))
             {
                 locker.Post(delegate  // once LoafLock is up and running
                 {
@@ -72,6 +78,13 @@ namespace LoafLock
                     if (!settings.HasWord) locker.AskForWord(window);  // the first run
                 });
             }
+        }
+
+        // the window opens when LoafLock starts, unless it started with Windows or minimized; the
+        // first run always opens it, to ask for the unlock word
+        public static bool OpensWindowAtStart(bool quiet, bool startMinimized, bool hasWord)
+        {
+            return !hasWord || (!quiet && !startMinimized);
         }
 
         void Show()

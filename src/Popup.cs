@@ -5,13 +5,11 @@ using System.Windows.Forms;
 
 namespace LoafLock
 {
-    // "Keyboard's locked": a small note in the corner above the taskbar when a key is pressed
-    // while locked. It never takes focus (a fullscreen video stays fullscreen), clicks go
-    // through it, and it fades out a few seconds after the last blocked key.
+    // A small note in the corner above the taskbar: "Keyboard locked" / "Keyboard unlocked", or
+    // on a blocked key. It never takes focus (a fullscreen video stays fullscreen), clicks go
+    // through it, and it fades out a few seconds after the last nudge.
     sealed class Popup : Form
     {
-        public const string Title = "Keyboard's locked";
-
         // where it goes, given its size: the main screen's bottom-right corner, above the
         // taskbar. The tests put it off screen.
         public static Func<Size, Point> Place = size =>
@@ -24,10 +22,11 @@ namespace LoafLock
 
         const double Full = 0.96;  // never quite opaque: only a see-through window lets clicks pass
         readonly Timer fade = new Timer { Interval = 30 };
-        readonly Icon rukus;
+        readonly Icon lockedRukus, rukus;
         readonly Font titleFont = new Font("Segoe UI Semibold", 11.5f), textFont = new Font("Segoe UI", 9f);
         readonly int pad;
-        string text = "";
+        string title = "", text = "";
+        bool showsLocked = true;
         int lastNudge;
         bool fadingIn;
 
@@ -42,7 +41,9 @@ namespace LoafLock
             float scale;
             using (Graphics g = CreateGraphics()) scale = g.DpiX / 96f;
             pad = (int)(14 * scale);
-            rukus = AppIcons.Load("loaflock-locked.ico", new Size((int)(48 * scale), (int)(48 * scale)));
+            var size = new Size((int)(48 * scale), (int)(48 * scale));
+            lockedRukus = AppIcons.Load("loaflock-locked.ico", size);
+            rukus = AppIcons.Load("loaflock.ico", size);
             ClientSize = new Size((int)(340 * scale), (int)(80 * scale));
             fade.Tick += delegate { Step(); };
         }
@@ -66,13 +67,19 @@ namespace LoafLock
             DwmSetWindowAttribute(Handle, 33, ref round, sizeof(int));
         }
 
-        // what the note says under its title (the screenshot tool sets it without showing it)
-        internal string Line { set { text = value ?? ""; Invalidate(); } }
-
-        // a key was just blocked: show the note, or keep it up a while longer
-        public void Nudge(string line)
+        // what the note says, and which Rukus (the screenshot tool sets it without showing it)
+        internal void Set(string heading, string line, bool locked)
         {
-            text = line;
+            title = heading ?? "";
+            text = line ?? "";
+            showsLocked = locked;
+            Invalidate();
+        }
+
+        // show the note, or keep it up a while longer
+        public void Nudge(string heading, string line, bool locked)
+        {
+            Set(heading, line, locked);
             lastNudge = Environment.TickCount;
             if (!Visible)
             {
@@ -83,7 +90,6 @@ namespace LoafLock
             // back on top of everything, a fullscreen video included, still without focus
             SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
             fadingIn = Opacity < Full;
-            Invalidate();
             fade.Start();
         }
 
@@ -105,13 +111,14 @@ namespace LoafLock
         protected override void OnPaint(PaintEventArgs e)
         {
             Graphics g = e.Graphics;
-            g.DrawIcon(rukus, pad, (ClientSize.Height - rukus.Height) / 2);
-            int x = pad * 2 + rukus.Width, width = ClientSize.Width - x - pad;
-            Size title = TextRenderer.MeasureText(g, Title, titleFont);
+            Icon picture = showsLocked ? lockedRukus : rukus;
+            g.DrawIcon(picture, pad, (ClientSize.Height - picture.Height) / 2);
+            int x = pad * 2 + picture.Width, width = ClientSize.Width - x - pad;
+            Size head = TextRenderer.MeasureText(g, title, titleFont);
             Size body = TextRenderer.MeasureText(g, text, textFont, new Size(width, ClientSize.Height), TextFormatFlags.WordBreak);
-            int top = (ClientSize.Height - title.Height - body.Height) / 2;
-            TextRenderer.DrawText(g, Title, titleFont, new Point(x, top), Color.White);
-            TextRenderer.DrawText(g, text, textFont, new Rectangle(x, top + title.Height, width, body.Height), Color.FromArgb(205, 205, 210), TextFormatFlags.WordBreak);
+            int top = (ClientSize.Height - head.Height - body.Height) / 2;
+            TextRenderer.DrawText(g, title, titleFont, new Point(x, top), Color.White);
+            TextRenderer.DrawText(g, text, textFont, new Rectangle(x, top + head.Height, width, body.Height), Color.FromArgb(205, 205, 210), TextFormatFlags.WordBreak);
         }
 
         protected override void WndProc(ref Message m)
@@ -129,6 +136,7 @@ namespace LoafLock
             if (disposing)
             {
                 fade.Dispose();
+                lockedRukus.Dispose();
                 rukus.Dispose();
                 titleFont.Dispose();
                 textFont.Dispose();

@@ -51,7 +51,7 @@ namespace LoafLock.Tests
             Up(g, 'B');
             Check(Down(g, Shift), "Shift got through");
             Up(g, Shift);
-            Check(g.Blocked == 3, "blocked " + g.Blocked + " presses, expected 3 (repeats don't count)");
+            Check(g.Blocked == 8, "blocked " + g.Blocked + " presses, expected 8 (a held key keeps counting)");
             Check(g.Locked, "it unlocked by itself");
         }
 
@@ -63,7 +63,7 @@ namespace LoafLock.Tests
             KeyGate g = Locked("rukus");
             Check(Down(g, 'J') && Down(g, 'J') && Down(g, 'J'), "repeats of a key LoafLock saw only as repeats got through");
             Check(!Up(g, 'J'), "the release of a press that slipped past was dropped (J would stay stuck down)");
-            Check(g.Blocked == 1, "blocked " + g.Blocked + ", expected 1");
+            Check(g.Blocked == 3, "blocked " + g.Blocked + ", expected 3");
             Check(Down(g, Ctrl), "Ctrl got through");
             g.Unlock();
             Check(!Up(g, Ctrl), "a release after unlocking was dropped");
@@ -112,7 +112,8 @@ namespace LoafLock.Tests
                 clock += 1960;
                 Check(Down(g, 'A'), "a slow repeat got through");
             }
-            Check(g.Locked && g.Blocked == 1, "slow repeats were taken for new presses (blocked " + g.Blocked + ")");
+            Check(g.Locked, "slow repeats were taken for new presses and typed the word");
+            Check(g.Blocked == 6, "blocked " + g.Blocked + ", expected 6 (each repeat counts)");
             g.Unlock();
             clock += 1960;
             Check(Down(g, 'A'), "a slow repeat got through after unlocking");

@@ -29,8 +29,8 @@ namespace LoafLock
 
         public bool Locked { get; private set; }
 
-        // fresh presses dropped while locked, all told. Only the hook thread writes it; others
-        // read it with Volatile.Read.
+        // presses dropped while locked, all told; a key held down keeps counting with every
+        // repeat. Only the hook thread writes it; others read it with Volatile.Read.
         public int Blocked;
 
         // the hook is still needed: locked, or a dropped press isn't released yet
@@ -92,15 +92,16 @@ namespace LoafLock
                 }
                 return false;
             }
-            if (dropping[vk]) return true;  // held since it was pressed while locked
+            if (dropping[vk])
+            {
+                if (Locked) Blocked++;  // held since it was pressed while locked
+                return true;
+            }
             if (!Locked) return false;
             dropping[vk] = true;
             pending++;
-            if (!repeat)
-            {
-                Blocked++;
-                Letter(vk);
-            }
+            Blocked++;
+            if (!repeat) Letter(vk);
             return true;
         }
 

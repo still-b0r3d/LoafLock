@@ -12,18 +12,19 @@ working.
    word** (letters only, at least 4): a word a cat won't type.
 2. Click **Lock keyboard**, in the window or from Rukus's menu (right-click him in the
    taskbar corner). He gets a gold padlock, and key presses go nowhere. The mouse keeps
-   working. A small note in the corner says so when a locked key is pressed; it never
+   working. A small note in the corner says when the keyboard locks and unlocks; it never
    takes focus, so a fullscreen video stays fullscreen.
 3. To get the keyboard back, type your unlock word, or click **Unlock keyboard**.
 
-Left-click Rukus any time for the window: the paws blocked today and all time, your unlock
-word, the note on or off, and **Start LoafLock when you sign in to Windows**.
+Left-click Rukus any time for the window: the paws blocked today and all time, and your
+unlock word. Its **Options** menu has the notes (on locking and unlocking, or on every
+blocked key), **Start minimized**, and **Start LoafLock when you sign in to Windows**.
 
 If you're ever stuck: Ctrl+Alt+Del, Task Manager, end LoafLock. The keyboard comes back at
-once.
+once. (It's in the window's **Help** menu too.)
 
-To remove LoafLock: in its window, **Remove my settings…** (its settings, its log and its
-sign-in entry), then delete `LoafLock.exe`.
+To remove LoafLock: in its window, **Options → Remove my settings…** (its settings, its
+log and its sign-in entry), then delete `LoafLock.exe`.
 
 What it never does: connect to the internet, or keep what you type. While unlocked it
 doesn't look at the keyboard at all.

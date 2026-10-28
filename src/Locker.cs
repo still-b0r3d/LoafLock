@@ -23,6 +23,7 @@ namespace LoafLock
         public bool IsLocked { get; private set; }
 
         public event Action Changed;         // locked or unlocked, the word, or the counts
+        public event Action<bool> LockedChanged;  // true: just locked; false: just unlocked
         public event Action KeysBlocked;     // keys were blocked just now
         public event Action<string> Failed;  // the keyboard couldn't be locked; says why
 
@@ -97,6 +98,7 @@ namespace LoafLock
                 poll.Stop();
                 Save();
             }
+            if (LockedChanged != null) LockedChanged(locked);
             if (Changed != null) Changed();
         }
 

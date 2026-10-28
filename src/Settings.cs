@@ -18,7 +18,10 @@ namespace LoafLock
         // It's a cat filter, not a password, so it's kept as plain text.
         public string UnlockWord = "";
 
-        public bool Popup = true;  // the "keyboard's locked" note in the corner when a locked key is pressed
+        // the note in the corner: when the keyboard locks or unlocks, and on every blocked key
+        public bool NoteOnLock = true, NoteOnKeys;
+
+        public bool StartMinimized;  // start as just Rukus in the taskbar corner, no window
 
         // paws blocked: all told, and on BlockedDay (yyyy-MM-dd)
         public int BlockedTotal, BlockedToday;
@@ -89,7 +92,9 @@ namespace LoafLock
                         if (WordProblem(value) == null) s.UnlockWord = value.ToLowerInvariant();
                         else if (value.Length > 0) Log.Write("settings: the unlock word in settings.ini isn't letters A to Z (4 to 20), so it was ignored");
                         break;
-                    case "popup": s.Popup = !IsNo(value); break;
+                    case "note_on_lock": s.NoteOnLock = !IsNo(value); break;
+                    case "note_on_keys": s.NoteOnKeys = !IsNo(value); break;
+                    case "start_minimized": s.StartMinimized = !IsNo(value); break;
                     case "blocked_total": if (int.TryParse(value, out number) && number >= 0) s.BlockedTotal = number; break;
                     case "blocked_today": if (int.TryParse(value, out number) && number >= 0) s.BlockedToday = number; break;
                     case "blocked_day":
@@ -106,7 +111,9 @@ namespace LoafLock
             string text =
                 "# LoafLock settings. LoafLock writes this file.\r\n" +
                 "unlock_word=" + UnlockWord + "\r\n" +
-                "popup=" + (Popup ? "yes" : "no") + "\r\n" +
+                "note_on_lock=" + (NoteOnLock ? "yes" : "no") + "\r\n" +
+                "note_on_keys=" + (NoteOnKeys ? "yes" : "no") + "\r\n" +
+                "start_minimized=" + (StartMinimized ? "yes" : "no") + "\r\n" +
                 "blocked_total=" + BlockedTotal + "\r\n" +
                 "blocked_today=" + BlockedToday + "\r\n" +
                 "blocked_day=" + BlockedDay + "\r\n";
