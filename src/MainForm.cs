@@ -7,8 +7,9 @@ using System.Windows.Forms;
 namespace LoafLock
 {
     // The LoafLock window, from a left click on Rukus or "Open LoafLock". Kept small: Rukus, the
-    // Lock / Unlock button, the paws blocked and the unlock word. Everything else lives in the
-    // menu bar (LoafLock, Options, Help). Closing it leaves LoafLock in the taskbar corner.
+    // Lock / Unlock button, the paws blocked, the unlock word and the version. Everything else
+    // lives in the menu bar: LoafLock, Options (its own window) and Help. Closing it leaves
+    // LoafLock in the taskbar corner.
     class MainForm : Form
     {
         public const string MakerUrl = "https://b0r3d.org";
@@ -18,11 +19,11 @@ namespace LoafLock
         readonly Locker locker;
         readonly PictureBox rukus;
         readonly Image unlockedPicture, lockedPicture;
-        readonly Label state, counts, word;
+        readonly Label state, counts, word, version;
         readonly LinkLabel change;
         readonly Button lockButton;
-        readonly ToolStripMenuItem lockItem, wordItem, noteOnLock, noteOnKeys, minimized, startup, remove;
-        bool loading;
+        readonly ToolStripMenuItem lockItem, wordItem;
+        bool optionsOpen;
 
         public MainForm(Locker locker)
         {
@@ -49,14 +50,8 @@ namespace LoafLock
             Item(app, "Close this &window", delegate { Close(); });
             Item(app, "&Quit LoafLock", delegate { Log.Write("quit from the window"); Application.ExitThread(); });
 
-            var options = new ToolStripMenuItem("&Options");
-            noteOnLock = Toggle(options, "Show a &note when the keyboard locks or unlocks", on => { locker.Settings.NoteOnLock = on; locker.Save(); });
-            noteOnKeys = Toggle(options, "Show a note on every &blocked key", on => { locker.Settings.NoteOnKeys = on; locker.Save(); });
-            options.DropDownItems.Add(new ToolStripSeparator());
-            minimized = Toggle(options, "Start &minimized (just Rukus in the taskbar corner)", on => { locker.Settings.StartMinimized = on; locker.Save(); });
-            startup = Toggle(options, "Start LoafLock when you &sign in to Windows", StartupChanged);
-            options.DropDownItems.Add(new ToolStripSeparator());
-            remove = Item(options, "&Remove my settings…", delegate { RemoveSettings(); });
+            // opens the Options window straight away: it has room for whatever comes next
+            var options = new ToolStripMenuItem("&Options", null, delegate { ShowOptions(); });
 
             var help = new ToolStripMenuItem("&Help");
             Item(help, "If the keyboard's &stuck…", delegate { Stuck(); });
@@ -105,6 +100,9 @@ namespace LoafLock
             wordRow.Controls.Add(change);
             body.Controls.Add(wordRow);
 
+            version = new Label { Text = "v" + Program.Version + " · Build: " + BuildInfo.Commit, AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(0, 14, 0, 0) };
+            body.Controls.Add(version);
+
             Controls.Add(body);
             Controls.Add(menu);
             AutoScaleDimensions = new SizeF(96F, 96F);
@@ -113,12 +111,6 @@ namespace LoafLock
             PerformLayout();
             body.Top = menu.Bottom;  // under the menu bar
 
-            try
-            {
-                loading = true;
-                startup.Checked = StartWithWindows.IsOn;
-            }
-            catch (Exception e) { Log.Write("couldn't read the start-with-Windows entry: " + e.Message); }
             Fill();
             locker.Changed += Fill;
             FormClosed += delegate { locker.Changed -= Fill; };
@@ -133,15 +125,31 @@ namespace LoafLock
         internal string ButtonText { get { return lockButton.Text; } }
         internal string CountsText { get { return counts.Text; } }
         internal string WordText { get { return word.Text; } }
+        internal string VersionLine { get { return version.Text; } }
 
         internal void LockClicked()
         {
             locker.LockOrUnlock(this, "window");
         }
 
+        // the Options window, over this one (from the menu bar, or Rukus's "Options…")
+        internal void ShowOptions()
+        {
+            if (optionsOpen) return;
+            optionsOpen = true;
+            try
+            {
+                using (var options = new OptionsForm(locker))
+                {
+                    options.ShowDialog(this);
+                    if (options.Forgot) Application.ExitThread();  // "Remove my settings": LoafLock goes too
+                }
+            }
+            finally { optionsOpen = false; }
+        }
+
         void Fill()
         {
-            loading = true;
             bool locked = locker.IsLocked;
             Settings s = locker.Settings;
             rukus.Image = locked ? lockedPicture : unlockedPicture;
@@ -152,28 +160,7 @@ namespace LoafLock
             counts.Text = "Paws blocked: " + locker.Today.ToString("N0") + " today · " + locker.Total.ToString("N0") + " all time";
             word.Text = s.HasWord ? s.UnlockWord : "none yet";
             change.Text = s.HasWord ? "Change…" : "Pick one…";
-            change.Enabled = wordItem.Enabled = remove.Enabled = !locked;
-            noteOnLock.Checked = s.NoteOnLock;
-            noteOnKeys.Checked = s.NoteOnKeys;
-            minimized.Checked = s.StartMinimized;
-            loading = false;
-        }
-
-        void StartupChanged(bool on)
-        {
-            try
-            {
-                StartWithWindows.Set(on, Application.ExecutablePath);
-                Log.Write(on ? "starts with Windows from now on" : "no longer starts with Windows");
-            }
-            catch (Exception e)
-            {
-                Log.Write("couldn't change the start-with-Windows entry: " + e.Message);
-                loading = true;
-                startup.Checked = !on;
-                loading = false;
-                MessageBox.Show(this, "LoafLock couldn't change that: " + e.Message, "LoafLock", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
+            change.Enabled = wordItem.Enabled = !locked;
         }
 
         void Stuck()
@@ -201,18 +188,6 @@ namespace LoafLock
                 "About LoafLock", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        void RemoveSettings()
-        {
-            if (locker.IsLocked) return;
-            DialogResult answer = MessageBox.Show(this,
-                "Remove LoafLock's settings, its log and its start-with-Windows entry, then quit?\n\n" +
-                "Your unlock word and paw counts will be gone. LoafLock.exe stays where it is: delete it too to remove LoafLock completely.",
-                "LoafLock", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
-            if (answer != DialogResult.Yes) return;
-            locker.ForgetEverything();
-            Application.ExitThread();
-        }
-
         static void Open(string target)
         {
             try { Process.Start(target); } catch { }
@@ -228,15 +203,6 @@ namespace LoafLock
         static ToolStripMenuItem Item(ToolStripMenuItem parent, string text, EventHandler click)
         {
             var item = new ToolStripMenuItem(text, null, click);
-            parent.DropDownItems.Add(item);
-            return item;
-        }
-
-        // a menu item with a tick, for an option
-        ToolStripMenuItem Toggle(ToolStripMenuItem parent, string text, Action<bool> changed)
-        {
-            var item = new ToolStripMenuItem(text) { CheckOnClick = true };
-            item.CheckedChanged += delegate { if (!loading) changed(item.Checked); };
             parent.DropDownItems.Add(item);
             return item;
         }

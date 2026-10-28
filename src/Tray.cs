@@ -48,6 +48,11 @@ namespace LoafLock
             countItem = new ToolStripMenuItem("") { Enabled = false };
             menu.Items.Add(countItem);
             menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("Options…", null, delegate
+            {
+                OpenWindow();
+                window.ShowOptions();
+            });
             menu.Items.Add("Quit LoafLock", null, delegate { Log.Write("quit from the tray"); Application.ExitThread(); });
             icon.ContextMenuStrip = menu;
             icon.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) OpenWindow(); };

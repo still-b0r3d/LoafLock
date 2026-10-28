@@ -57,7 +57,8 @@ namespace LoafLock.Tests
             Run("start with Windows: on, off, and what it runs", StartupEntry);
             Run("pop-up: shows without taking focus, lets clicks through, fades", PopupNeverTakesFocus);
             Run("start: the window opens unless minimized or with Windows; always on the first run", WindowAtStart);
-            Run("window: follows the lock, the word and the counts", WindowFollowsTheLock);
+            Run("window: follows the lock, the word and the counts; shows the version", WindowFollowsTheLock);
+            Run("options: the boxes show the settings and save changes right away", OptionsApplyRightAway);
             Run("remove my settings: the folder and the sign-in entry go", RemoveSettingsForgetsAll);
 
             try { Directory.Delete(home, true); } catch { }

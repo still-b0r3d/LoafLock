@@ -30,6 +30,11 @@ namespace LoafLock.Tests
                     Shoot(window, Path.Combine(folder, "window-locked.png"));
                     window.LockClicked();
                     Pump(() => !locker.IsLocked, "it didn't unlock");
+                    using (var options = new OptionsForm(locker) { Quiet = true })
+                    {
+                        ShowOffScreen(options);
+                        Shoot(options, Path.Combine(folder, "options.png"));
+                    }
                 }
                 using (var popup = new Popup())
                 {

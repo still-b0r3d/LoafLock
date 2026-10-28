@@ -95,6 +95,7 @@ namespace LoafLock.Tests
             {
                 Check(window.StateText.Contains("unlocked") && window.ButtonText == "Lock keyboard", "the window doesn't show the keyboard unlocked");
                 Check(window.WordText == "rukus", "the window doesn't show the unlock word");
+                Check(window.VersionLine == "v" + Program.Version + " · Build: " + BuildInfo.Commit, "the window shows the version as '" + window.VersionLine + "'");
                 int windowThread = Thread.CurrentThread.ManagedThreadId, otherThread = 0;
                 locker.Changed += delegate { if (Thread.CurrentThread.ManagedThreadId != windowThread) otherThread = Thread.CurrentThread.ManagedThreadId; };
                 window.LockClicked();
@@ -112,6 +113,22 @@ namespace LoafLock.Tests
                 Pump(() => !locker.IsLocked, "the window's Unlock button didn't unlock");
                 Check(window.ButtonText == "Lock keyboard", "the button didn't turn back into Lock");
                 Check(File.Exists(Settings.FilePath) && File.ReadAllText(Settings.FilePath).Contains("blocked_total="), "the counts weren't saved on unlocking");
+            }
+        }
+
+        static void OptionsApplyRightAway()
+        {
+            var settings = new Settings { UnlockWord = "rukus" };
+            using (var locker = new Locker(settings, new KeyHook(new KeyGate(), true)))
+            using (var options = new OptionsForm(locker))
+            {
+                Check(options.NoteOnLockBox.Checked && !options.NoteOnKeysBox.Checked && !options.MinimizedBox.Checked, "the Options window doesn't show the settings");
+                options.NoteOnLockBox.Checked = false;
+                options.NoteOnKeysBox.Checked = true;
+                options.MinimizedBox.Checked = true;
+                Check(!settings.NoteOnLock && settings.NoteOnKeys && settings.StartMinimized, "ticking the boxes didn't change the settings");
+                Settings saved = Settings.Load();
+                Check(!saved.NoteOnLock && saved.NoteOnKeys && saved.StartMinimized, "the changes weren't saved right away");
             }
         }
 

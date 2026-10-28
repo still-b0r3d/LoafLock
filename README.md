@@ -4,7 +4,7 @@ Keeps a cat lying on the keyboard from typing. LoafLock sits in the Windows task
 as Rukus. Lock the keyboard from there, and key presses go nowhere while the mouse keeps
 working.
 
-**Work in progress.** Version 0.3, not released yet.
+**Work in progress.** Version 0.3.1, not released yet.
 
 ## Using it
 
@@ -17,14 +17,15 @@ working.
 3. To get the keyboard back, type your unlock word, or click **Unlock keyboard**.
 
 Left-click Rukus any time for the window: the paws blocked today and all time, and your
-unlock word. Its **Options** menu has the notes (on locking and unlocking, or on every
-blocked key), **Start minimized**, and **Start LoafLock when you sign in to Windows**.
+unlock word. **Options** (in its menu bar, or Rukus's menu) has the notes (on locking and
+unlocking, or on every blocked key), **Start minimized**, and **Start LoafLock when you
+sign in to Windows**.
 
 If you're ever stuck: Ctrl+Alt+Del, Task Manager, end LoafLock. The keyboard comes back at
 once. (It's in the window's **Help** menu too.)
 
-To remove LoafLock: in its window, **Options → Remove my settings…** (its settings, its
-log and its sign-in entry), then delete `LoafLock.exe`.
+To remove LoafLock: **Options → Remove my settings…** (its settings, its log and its
+sign-in entry), then delete `LoafLock.exe`.
 
 What it never does: connect to the internet, or keep what you type. While unlocked it
 doesn't look at the keyboard at all.
