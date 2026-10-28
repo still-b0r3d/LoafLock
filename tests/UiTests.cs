@@ -113,6 +113,69 @@ namespace LoafLock.Tests
                 Pump(() => !locker.IsLocked, "the window's Unlock button didn't unlock");
                 Check(window.ButtonText == "Lock keyboard", "the button didn't turn back into Lock");
                 Check(File.Exists(Settings.FilePath) && File.ReadAllText(Settings.FilePath).Contains("blocked_total="), "the counts weren't saved on unlocking");
+
+                settings.CatName = "Biscuit";
+                locker.SettingsChanged();
+                Check(window.CountsText.StartsWith("Paws blocked by Biscuit: "), "the window doesn't name the cat: " + window.CountsText);
+
+                // the mouse too: and Windows being locked lets go of it, not of the keyboard
+                settings.LockMouse = true;
+                locker.Lock(null, "command line");
+                Pump(() => locker.IsLocked, "locking from the command line didn't lock");
+                Check(locker.MouseLocked && hook.MouseInstalled, "the mouse wasn't locked too");
+                Check(window.StateText.StartsWith("Keyboard and mouse locked"), "the window doesn't say the mouse is locked: " + window.StateText);
+                locker.LetGoOfTheMouse();
+                Pump(() => !hook.MouseInstalled, "the mouse hook stayed after letting go of the mouse");
+                Check(locker.IsLocked && !locker.MouseLocked && window.StateText.StartsWith("Keyboard locked"), "letting go of the mouse did more, or less");
+                locker.Unlock("command line");
+                Pump(() => !locker.IsLocked, "unlocking from the command line didn't unlock");
+            }
+        }
+
+        static void CommandLine()
+        {
+            Check(Program.Parse(new string[0]) == Program.Command.Open, "no arguments isn't Open");
+            Check(Program.Parse(new[] { "lock" }) == Program.Command.Lock && Program.Parse(new[] { "--LOCK" }) == Program.Command.Lock && Program.Parse(new[] { "/lock" }) == Program.Command.Lock,
+                "lock, --LOCK or /lock isn't Lock");
+            Check(Program.Parse(new[] { "unlock" }) == Program.Command.Unlock && Program.Parse(new[] { "--startup" }) == Program.Command.Startup && Program.Parse(new[] { "-v" }) == Program.Command.Version,
+                "unlock, --startup or -v is read wrong");
+            Check(Program.Parse(new[] { "loaf" }) == Program.Command.Unknown, "a word LoafLock doesn't know wasn't Unknown");
+            Check(Instance.Name.Contains("LoafLockTests"), "the tests would talk to a LoafLock that's really running");
+            Check(!Instance.Send(Instance.Ask.Lock, 200), "\"lock\" says it got through with nothing listening");
+            using (EventWaitHandle locks = Instance.Requests(Instance.Ask.Lock))
+            using (EventWaitHandle unlocks = Instance.Requests(Instance.Ask.Unlock))
+            {
+                Check(Instance.Send(Instance.Ask.Lock), "\"lock\" says it didn't get through");
+                Check(locks.WaitOne(0) && !unlocks.WaitOne(0), "\"lock\" didn't reach the running copy, or reached it as unlock");
+                Instance.Send(Instance.Ask.Unlock);
+                Check(unlocks.WaitOne(0) && !locks.WaitOne(0), "\"unlock\" didn't reach the running copy");
+            }
+
+            // "lock" then "unlock" before the lock is even reported: unlocking wins
+            var settings = new Settings { UnlockWord = "rukus" };
+            var hook = new KeyHook(new KeyGate(), true);
+            using (var locker = new Locker(settings, hook))
+            {
+                int reported = 0;
+                locker.LockedChanged += delegate { reported++; };
+                locker.Lock(null, "command line");
+                locker.Unlock("command line");
+                Pump(() => reported == 2, "\"unlock\" right after \"lock\" left it locked");
+                Check(!locker.IsLocked && !hook.Installed, "it's still locked after \"unlock\"");
+            }
+        }
+
+        static void Looks()
+        {
+            var settings = new Settings { UnlockWord = "rukus" };
+            using (var locker = new Locker(settings, new KeyHook(new KeyGate(), true)))
+            using (var window = new MainForm(locker))
+            {
+                Theme.Set(Look.Dark);
+                Check(Theme.Dark || SystemInformation.HighContrast, "Dark isn't dark");
+                if (Theme.Dark) Check(window.BackColor.GetBrightness() < 0.3 && window.ForeColor.GetBrightness() > 0.7, "the window didn't turn dark");
+                Theme.Set(Look.Light);
+                Check(!Theme.Dark && window.BackColor == SystemColors.Window, "the window didn't turn light again");
             }
         }
 
@@ -129,6 +192,17 @@ namespace LoafLock.Tests
                 Check(!settings.NoteOnLock && settings.NoteOnKeys && settings.StartMinimized, "ticking the boxes didn't change the settings");
                 Settings saved = Settings.Load();
                 Check(!saved.NoteOnLock && saved.NoteOnKeys && saved.StartMinimized, "the changes weren't saved right away");
+
+                Check(!options.MouseBox.Checked && options.CatNameBox.Text == "" && options.LookBox(Look.Windows).Checked, "the mouse, name or look don't show the defaults");
+                int told = 0;
+                locker.Changed += delegate { told++; };
+                options.MouseBox.Checked = true;
+                options.CatNameBox.Text = "  Biscuit ";
+                options.LookBox(Look.Light).Checked = true;
+                Check(settings.LockMouse && settings.CatName == "Biscuit" && settings.Look == Look.Light, "the mouse, name or look didn't change the settings");
+                Check(told > 0, "naming the cat didn't tell the window");
+                saved = Settings.Load();
+                Check(saved.LockMouse && saved.CatName == "Biscuit" && saved.Look == Look.Light, "the mouse, name or look weren't saved right away");
             }
         }
 

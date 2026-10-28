@@ -2,9 +2,9 @@
 
 Keeps a cat lying on the keyboard from typing. LoafLock sits in the Windows taskbar corner
 as Rukus. Lock the keyboard from there, and key presses go nowhere while the mouse keeps
-working.
+working (or locks too, if you like).
 
-**Work in progress.** Version 0.3.1, not released yet.
+**Work in progress.** Version 0.4, not released yet.
 
 ## Using it
 
@@ -17,18 +17,31 @@ working.
 3. To get the keyboard back, type your unlock word, or click **Unlock keyboard**.
 
 Left-click Rukus any time for the window: the paws blocked today and all time, and your
-unlock word. **Options** (in its menu bar, or Rukus's menu) has the notes (on locking and
-unlocking, or on every blocked key), **Start minimized**, and **Start LoafLock when you
-sign in to Windows**.
+unlock word. **Options** (in its menu bar, or Rukus's menu) has:
+
+- the notes (on locking and unlocking, or on every blocked key);
+- **your cat's name**, for "Paws blocked by Biscuit";
+- **Lock the mouse too** (off to start with): the pointer, the buttons and the wheel stop
+  as well, and only your unlock word gets things back;
+- **Look**: like Windows, light or dark;
+- **Start minimized**, and **Start LoafLock when you sign in to Windows**.
+
+From a shortcut, a script or a Stream Deck button:
+
+```
+LoafLock.exe lock      locks (and starts LoafLock first if it isn't running)
+LoafLock.exe unlock    unlocks
+```
 
 If you're ever stuck: Ctrl+Alt+Del, Task Manager, end LoafLock. The keyboard comes back at
-once. (It's in the window's **Help** menu too.)
+once. With the mouse locked too: Ctrl+Alt+Del, **Lock**, then sign back in, and the mouse
+works again, so you can click Unlock. (Both are in the window's **Help** menu.)
 
 To remove LoafLock: **Options → Remove my settings…** (its settings, its log and its
 sign-in entry), then delete `LoafLock.exe`.
 
 What it never does: connect to the internet, or keep what you type. While unlocked it
-doesn't look at the keyboard at all.
+doesn't look at the keyboard or the mouse at all.
 
 ## Build it yourself
 

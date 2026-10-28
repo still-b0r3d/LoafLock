@@ -27,7 +27,7 @@ if exist bin\LoafLock.exe (
 )
 
 rem The build stamp: the commit GitHub builds from (its first 7 characters), or "dev" for a
-rem build made anywhere else. The exe shows it as "LoafLock v0.3.1 - Build: abc1234".
+rem build made anywhere else. The exe shows it as "LoafLock v0.4 - Build: abc1234".
 set "BUILD=dev"
 if defined LOAFLOCK_BUILD set "BUILD=%LOAFLOCK_BUILD:~0,7%"
 if not exist bin\obj mkdir bin\obj

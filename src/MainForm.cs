@@ -34,7 +34,6 @@ namespace LoafLock
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            BackColor = SystemColors.Window;
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             try { Icon = AppIcons.Load("loaflock.ico", SystemInformation.IconSize); } catch { }
@@ -42,7 +41,7 @@ namespace LoafLock
             lockedPicture = Picture("loaflock-locked.ico");
 
             // ---- the menu bar ----
-            var menu = new MenuStrip { BackColor = SystemColors.Window };
+            var menu = new MenuStrip();
             var app = new ToolStripMenuItem("&LoafLock");
             lockItem = Item(app, "&Lock keyboard", delegate { LockClicked(); });
             wordItem = Item(app, "&Change unlock word…", delegate { locker.AskForWord(this); });
@@ -100,7 +99,7 @@ namespace LoafLock
             wordRow.Controls.Add(change);
             body.Controls.Add(wordRow);
 
-            version = new Label { Text = "v" + Program.Version + " · Build: " + BuildInfo.Commit, AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(0, 14, 0, 0) };
+            version = new Label { Text = "v" + Program.Version + " · Build: " + BuildInfo.Commit, AutoSize = true, Tag = Theme.DimTag, Margin = new Padding(0, 14, 0, 0) };
             body.Controls.Add(version);
 
             Controls.Add(body);
@@ -111,9 +110,17 @@ namespace LoafLock
             PerformLayout();
             body.Top = menu.Bottom;  // under the menu bar
 
-            Fill();
+            Restyle();
             locker.Changed += Fill;
-            FormClosed += delegate { locker.Changed -= Fill; };
+            Theme.Changed += Restyle;
+            Disposed += delegate { locker.Changed -= Fill; Theme.Changed -= Restyle; };  // closed, or just disposed (the tests)
+        }
+
+        // light or dark, then everything that's coloured by what it says
+        void Restyle()
+        {
+            Theme.Apply(this);
+            Fill();
         }
 
         // the screenshot tool shows it off screen without taking focus
@@ -153,11 +160,13 @@ namespace LoafLock
             bool locked = locker.IsLocked;
             Settings s = locker.Settings;
             rukus.Image = locked ? lockedPicture : unlockedPicture;
-            state.Text = locked ? "Keyboard locked. Type your unlock word, or click Unlock." : "Keyboard unlocked.";
-            state.ForeColor = locked ? Color.FromArgb(160, 110, 0) : SystemColors.GrayText;
+            state.Text = !locked ? "Keyboard unlocked."
+                : locker.MouseLocked ? "Keyboard and mouse locked. Type your unlock word."
+                : "Keyboard locked. Type your unlock word, or click Unlock.";
+            state.ForeColor = locked ? Theme.Gold : Theme.Dim;
             lockButton.Text = locked ? "Unlock keyboard" : "Lock keyboard";
             lockItem.Text = locked ? "&Unlock keyboard" : "&Lock keyboard";
-            counts.Text = "Paws blocked: " + locker.Today.ToString("N0") + " today · " + locker.Total.ToString("N0") + " all time";
+            counts.Text = s.PawsBlocked + ": " + locker.Today.ToString("N0") + " today · " + locker.Total.ToString("N0") + " all time";
             word.Text = s.HasWord ? s.UnlockWord : "none yet";
             change.Text = s.HasWord ? "Change…" : "Pick one…";
             change.Enabled = wordItem.Enabled = !locked;
@@ -169,6 +178,7 @@ namespace LoafLock
                 "If the keyboard stays locked:\n\n" +
                 "•  Type your unlock word" + (locker.Settings.HasWord ? " (" + locker.Settings.UnlockWord + ")" : "") + ".\n" +
                 "•  Or click Unlock keyboard, here or in Rukus's menu in the taskbar corner.\n" +
+                "•  Mouse locked too? Press Ctrl+Alt+Del and pick Lock, then sign back in: the mouse works again, so you can click Unlock.\n" +
                 "•  Still stuck? Press Ctrl+Alt+Del, open Task Manager and end LoafLock. The keyboard comes back at once.",
                 "LoafLock", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
@@ -183,7 +193,7 @@ namespace LoafLock
         {
             MessageBox.Show(this,
                 Program.VersionText + "\n\n" +
-                "Locks the keyboard so a cat lying on it can't type. The mouse keeps working. It never connects to the internet and never keeps what you type.\n\n" +
+                "Locks the keyboard so a cat lying on it can't type. The mouse keeps working, unless you lock it too (in Options). It never connects to the internet and never keeps what you type.\n\n" +
                 "Made by b0r3d.org.",
                 "About LoafLock", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }

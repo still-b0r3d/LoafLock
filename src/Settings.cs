@@ -23,11 +23,32 @@ namespace LoafLock
 
         public bool StartMinimized;  // start as just Rukus in the taskbar corner, no window
 
+        public bool LockMouse;  // lock the mouse too: the pointer, the buttons and the wheel
+
+        // "Paws blocked by Biscuit": the cat's name, or "" for none
+        public string CatName = "";
+        public const int MaxNameLength = 24;
+
+        public Look Look = Look.Windows;  // light or dark windows
+
         // paws blocked: all told, and on BlockedDay (yyyy-MM-dd)
         public int BlockedTotal, BlockedToday;
         public string BlockedDay = "";
 
         public bool HasWord { get { return UnlockWord.Length > 0; } }
+
+        // "Paws blocked", or "Paws blocked by Biscuit"
+        public string PawsBlocked { get { return CatName.Length > 0 ? "Paws blocked by " + CatName : "Paws blocked"; } }
+
+        // a cat's name as LoafLock keeps it: one line, no spaces at the ends, not too long
+        public static string CleanName(string name)
+        {
+            var kept = new System.Text.StringBuilder();
+            foreach (char c in name ?? "")
+                if (!char.IsControl(c)) kept.Append(c);
+            string clean = kept.ToString().Trim();
+            return clean.Length > MaxNameLength ? clean.Substring(0, MaxNameLength).TrimEnd() : clean;
+        }
 
         public int TodayCount(DateTime now)
         {
@@ -95,6 +116,16 @@ namespace LoafLock
                     case "note_on_lock": s.NoteOnLock = !IsNo(value); break;
                     case "note_on_keys": s.NoteOnKeys = !IsNo(value); break;
                     case "start_minimized": s.StartMinimized = !IsNo(value); break;
+                    case "lock_mouse": s.LockMouse = !IsNo(value); break;
+                    case "cat_name": s.CatName = CleanName(value); break;
+                    case "look":
+                        switch (value.ToLowerInvariant())
+                        {
+                            case "light": s.Look = Look.Light; break;
+                            case "dark": s.Look = Look.Dark; break;
+                            default: s.Look = Look.Windows; break;
+                        }
+                        break;
                     case "blocked_total": if (int.TryParse(value, out number) && number >= 0) s.BlockedTotal = number; break;
                     case "blocked_today": if (int.TryParse(value, out number) && number >= 0) s.BlockedToday = number; break;
                     case "blocked_day":
@@ -114,6 +145,9 @@ namespace LoafLock
                 "note_on_lock=" + (NoteOnLock ? "yes" : "no") + "\r\n" +
                 "note_on_keys=" + (NoteOnKeys ? "yes" : "no") + "\r\n" +
                 "start_minimized=" + (StartMinimized ? "yes" : "no") + "\r\n" +
+                "lock_mouse=" + (LockMouse ? "yes" : "no") + "\r\n" +
+                "cat_name=" + CatName + "\r\n" +
+                "look=" + Look.ToString().ToLowerInvariant() + "\r\n" +
                 "blocked_total=" + BlockedTotal + "\r\n" +
                 "blocked_today=" + BlockedToday + "\r\n" +
                 "blocked_day=" + BlockedDay + "\r\n";

@@ -21,8 +21,9 @@ namespace LoafLock
         bool asking, forgotten;
 
         public bool IsLocked { get; private set; }
+        public bool MouseLocked { get; private set; }  // locked, with the mouse too
 
-        public event Action Changed;         // locked or unlocked, the word, or the counts
+        public event Action Changed;         // locked or unlocked, the word, the counts, or a setting
         public event Action<bool> LockedChanged;  // true: just locked; false: just unlocked
         public event Action KeysBlocked;     // keys were blocked just now
         public event Action<string> Failed;  // the keyboard couldn't be locked; says why
@@ -55,14 +56,39 @@ namespace LoafLock
         // from the tray menu or the window; owner: the window a word prompt goes over
         public void LockOrUnlock(IWin32Window owner, string from)
         {
-            if (IsLocked)
+            if (IsLocked) Unlock(from);
+            else Lock(owner, from);
+        }
+
+        // from: where it was asked for, for the log ("window", "command line")
+        public void Lock(IWin32Window owner, string from)
+        {
+            if (IsLocked) return;
+            if (asking)
             {
-                Log.Write("unlock from the " + from);
-                hook.Unlock();
+                // the word is being picked: locking now would lock with the old one
+                Log.Write("lock from the " + from + " left alone: the unlock word is being changed");
                 return;
             }
             if (!Settings.HasWord && !AskForWord(owner)) return;
+            Log.Write("lock from the " + from);
+            hook.MouseToo = Settings.LockMouse;
             hook.Lock();
+        }
+
+        // always goes to the hook, even if the lock it undoes hasn't been reported yet ("lock"
+        // and "unlock" from the command line in quick succession): unlocking twice does no harm
+        public void Unlock(string from)
+        {
+            Log.Write("unlock from the " + from);
+            hook.Unlock();
+        }
+
+        // a setting changed (the cat's name, say): the window and the tray show it
+        public void SettingsChanged()
+        {
+            Save();
+            if (Changed != null) Changed();
         }
 
         // the first run, and "Change…": true once there's a word
@@ -90,7 +116,8 @@ namespace LoafLock
         {
             if (IsLocked == locked) return;
             IsLocked = locked;
-            Log.Write(locked ? "locked" : "unlocked");
+            MouseLocked = locked && hook.MouseInstalled;
+            Log.Write(locked ? (MouseLocked ? "locked, the mouse too" : "locked") : "unlocked");
             if (locked) poll.Start();
             else
             {
@@ -144,6 +171,18 @@ namespace LoafLock
         void SessionSwitched(object sender, SessionSwitchEventArgs e)
         {
             if (e.Reason == SessionSwitchReason.SessionUnlock || e.Reason == SessionSwitchReason.ConsoleConnect) hook.Rehook();
+            // the way out with the mouse locked too: Ctrl+Alt+Del, Lock, sign back in. The
+            // mouse works again (and can click Unlock); the keyboard stays locked.
+            if (e.Reason == SessionSwitchReason.SessionLock) Post(LetGoOfTheMouse);
+        }
+
+        internal void LetGoOfTheMouse()
+        {
+            if (!MouseLocked) return;
+            hook.FreeMouse();
+            MouseLocked = false;
+            Log.Write("Windows was locked, so the mouse works again (the keyboard stays locked)");
+            if (Changed != null) Changed();
         }
 
         public void Dispose()

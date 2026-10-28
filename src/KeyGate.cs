@@ -1,29 +1,52 @@
 namespace LoafLock
 {
     // Decides, key by key, which presses LoafLock drops. No Windows calls, so the tests can drive
-    // it one key at a time; in the app only the hook thread touches it.
+    // it one key at a time; in the app only the hook thread touches it. Mouse buttons come through
+    // here too (as their key codes, 1 to 6) when the mouse is locked.
     //
     //   locked:      every press is dropped, and so are its repeats, even ones that come after
     //                unlocking, until the key is let go. A cat still lying on a key when you
     //                unlock doesn't start it repeating into YouTube.
-    //   releases:    always go through. A release can't leave anything stuck down; dropping one
-    //                can, whenever a press slipped past LoafLock (the hook was a moment late,
-    //                or the key went to an admin window), and Windows would then think the key
-    //                is held, Ctrl and Shift included.
+    //   releases:    a release goes with its press. When LoafLock dropped the press, it drops the
+    //                release too: the app never saw the key go down, and some act when a key
+    //                comes up (YouTube plays and pauses on Space's release). Every other release
+    //                goes through, because dropping one whose press got past LoafLock would leave
+    //                the key stuck down. So releases still go through for:
+    //                - Shift, Ctrl, Alt, Windows and Caps Lock, always. Their lone release does
+    //                  nothing, and stuck down they'd change every click and key.
+    //                - a key first seen just after locking (or after the hook was renewed): it
+    //                  may have been held since before, and what LoafLock saw was its first
+    //                  repeat. A held key repeats within HeldGraceMs, so later ones are new.
+    //                - a key that turns out to have been repeating already: pressed again
+    //                  sooner than a new press would start repeating (RepeatSplitMs). Its first
+    //                  press got past LoafLock (Windows gave up waiting for the hook, or it
+    //                  went to an admin window).
+    //                - a press that reached LoafLock late (LateMs, or Unpair): Windows may have
+    //                  given up waiting for the hook and passed it on.
     //   the word:    fresh presses of its letters, in order, unlock. Repeats of a held key and
     //                Shift, Ctrl, Alt, Windows and Caps Lock don't count; any other key starts
-    //                the word over.
+    //                the word over. Mouse buttons leave it alone.
     //   lost keys:   Windows sometimes never sends a release (Ctrl+Alt+Del's screen, locking
-    //                the PC). A held key repeats, so one silent for longer than the slowest
-    //                repeat Windows is set to (LostReleaseMs) isn't held any more.
+    //                the PC). Once unlocked, a key silent for longer than the slowest repeat
+    //                Windows is set to (LostReleaseMs) isn't held any more. Not while locked:
+    //                everything's dropped then anyway, and Windows repeats only the last key
+    //                pressed, so a key under a paw goes quiet while the cat lies on another.
+    //                A key pressed again after a long silence (a mouse button: pressed again at
+    //                all) had its release lost, and counts as a new press.
     sealed class KeyGate
     {
         public int LostReleaseMs = 1500;
+        public int HeldGraceMs = 600;  // the longest a held key waits before repeating, and a little more
+        public int RepeatSplitMs;      // between a held key's repeat gap and its first wait; 0: can't tell them apart
+        public const int LateMs = 150;
 
         readonly bool[] down = new bool[256];      // down right now, as far as the gate has seen
         readonly bool[] dropping = new bool[256];  // its press was dropped: so are its repeats
+        readonly bool[] paired = new bool[256];    // ...and its release, since its press surely never got through
+        readonly bool[] repeated = new bool[256];  // a repeat of it has been seen since it was first dropped
         readonly int[] seen = new int[256];        // when the key last did anything (ms, Windows' clock)
         int pending;                               // keys with dropping set
+        int watchedSince;                          // when LoafLock last locked or renewed its hook
         int[] word = new int[0], fallback = new int[0];  // the word's letters as key codes, and where a near miss picks up
         int matched;                               // letters of the word typed so far
 
@@ -55,13 +78,22 @@ namespace LoafLock
             matched = 0;
         }
 
-        public void Lock()
+        // now: Windows' clock (ms)
+        public void Lock(int now)
         {
             // keys LoafLock isn't dropping went by while it wasn't looking, so it can't know
             // they're down: a key the cat was already lying on just counts as a fresh press
             for (int vk = 0; vk < 256; vk++) down[vk] = dropping[vk];
+            watchedSince = now;
             matched = 0;
             Locked = true;
+        }
+
+        // the hook was installed afresh: another program's hook may have been ahead of it until
+        // now, and seen presses LoafLock didn't
+        public void Rehooked(int now)
+        {
+            watchedSince = now;
         }
 
         public void Unlock()
@@ -70,14 +102,18 @@ namespace LoafLock
             matched = 0;
         }
 
-        // One key event; true means drop it. time: when it happened (ms, Windows' clock).
-        public bool OnKey(int vk, bool pressed, int time)
+        // One key event; true means drop it. time: when it happened (ms, Windows' clock); late:
+        // how long it took to reach the hook (ms).
+        public bool OnKey(int vk, bool pressed, int time, int late = 0)
         {
             if (vk < 0 || vk > 255) return false;
             bool repeat = pressed && down[vk];
-            if (repeat && time - seen[vk] > LostReleaseMs)
+            int gap = time - seen[vk];
+            // "still down", but silent too long (or a mouse button, which never repeats, pressed
+            // again): its release got lost
+            if (repeat && (IsMouse(vk) || gap > LostReleaseMs))
             {
-                Forget(vk);  // "still down", but silent too long: its release got lost
+                Forget(vk);
                 repeat = false;
             }
             seen[vk] = time;
@@ -85,29 +121,52 @@ namespace LoafLock
 
             if (!pressed)
             {
+                bool drop = dropping[vk] && paired[vk];
                 if (dropping[vk])
                 {
-                    dropping[vk] = false;
+                    dropping[vk] = paired[vk] = false;
                     pending--;
                 }
-                return false;
+                return drop;
             }
             if (dropping[vk])
             {
+                // its first repeat: one that comes this quickly means it was repeating already
+                if (!repeated[vk] && gap < RepeatSplitMs) paired[vk] = false;
+                repeated[vk] = true;
                 if (Locked) Blocked++;  // held since it was pressed while locked
                 return true;
             }
             if (!Locked) return false;
             dropping[vk] = true;
+            repeated[vk] = false;
+            // a mouse button never repeats, so a press seen is a new press
+            paired[vk] = late < LateMs && !IsModifier(vk) && (IsMouse(vk) || time - watchedSince > HeldGraceMs);
             pending++;
             Blocked++;
             if (!repeat) Letter(vk);
             return true;
         }
 
-        // releases that never came: a key silent this long isn't held any more
+        // the press just dropped took long enough that Windows may have passed it on anyway: its
+        // release goes through
+        public void Unpair(int vk)
+        {
+            if (vk >= 0 && vk < 256) paired[vk] = false;
+        }
+
+        // the mouse hook is gone (the PC was locked while the mouse was too): releases of the
+        // buttons it dropped won't reach the gate now
+        public void ForgetMouse()
+        {
+            for (int vk = 0; vk < 256; vk++)
+                if (IsMouse(vk)) Forget(vk);
+        }
+
+        // once unlocked, releases that never came: a key silent this long isn't held any more
         public void Expire(int now)
         {
+            if (Locked) return;
             for (int vk = 0; vk < 256; vk++)
                 if (dropping[vk] && now - seen[vk] > LostReleaseMs) Forget(vk);
         }
@@ -116,7 +175,7 @@ namespace LoafLock
         {
             if (dropping[vk])
             {
-                dropping[vk] = false;
+                dropping[vk] = paired[vk] = false;
                 pending--;
             }
             down[vk] = false;
@@ -124,7 +183,7 @@ namespace LoafLock
 
         void Letter(int vk)
         {
-            if (word.Length == 0 || IsModifier(vk)) return;
+            if (word.Length == 0 || IsModifier(vk) || IsMouse(vk)) return;
             if (vk < 'A' || vk > 'Z')
             {
                 matched = 0;
@@ -145,6 +204,12 @@ namespace LoafLock
                     return true;
             }
             return false;
+        }
+
+        // the mouse buttons' key codes: left, right, (3 is Ctrl+Break), middle, back, forward
+        public static bool IsMouse(int vk)
+        {
+            return vk == 1 || vk == 2 || vk == 4 || vk == 5 || vk == 6;
         }
     }
 }

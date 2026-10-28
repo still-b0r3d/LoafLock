@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace LoafLock
 {
@@ -25,17 +26,21 @@ namespace LoafLock
         readonly NotifyIcon icon = new NotifyIcon();
         readonly Icon unlocked = AppIcons.Load("loaflock.ico", SystemInformation.SmallIconSize);
         readonly Icon locked = AppIcons.Load("loaflock-locked.ico", SystemInformation.SmallIconSize);
+        readonly ContextMenuStrip menu = new ContextMenuStrip { ShowImageMargin = false };
         readonly ToolStripMenuItem lockItem, countItem;
         readonly Popup popup = new Popup();
-        readonly EventWaitHandle showRequests = Instance.ShowRequests();
+        readonly EventWaitHandle showRequests = Instance.Requests(Instance.Ask.Show);
+        readonly EventWaitHandle lockRequests = Instance.Requests(Instance.Ask.Lock);
+        readonly EventWaitHandle unlockRequests = Instance.Requests(Instance.Ask.Unlock);
         readonly System.Windows.Forms.Timer tick = new System.Windows.Forms.Timer { Interval = 500 };
         MainForm window;
-        bool? shownLocked;
+        bool? shownLocked, shownMouse;
 
-        // quiet: started with Windows, so no window (see OpensWindowAtStart)
-        public Tray(Settings settings, bool quiet)
+        // quiet: started with Windows or from the command line, so no window (see
+        // OpensWindowAtStart); lockNow: started by "LoafLock.exe lock"
+        public Tray(Settings settings, bool quiet, bool lockNow)
         {
-            var menu = new ContextMenuStrip { ShowImageMargin = false };
+            Theme.Set(settings.Look);
             locker = new Locker(settings, new KeyHook(new KeyGate(), false));
 
             menu.Items.Add(new ToolStripMenuItem(Program.VersionText) { Enabled = false });
@@ -61,28 +66,53 @@ namespace LoafLock
             locker.LockedChanged += nowLocked =>
             {
                 if (!settings.NoteOnLock) return;
-                if (nowLocked) popup.Nudge("Keyboard locked", "Type your unlock word to get it back.", true);
-                else popup.Nudge("Keyboard unlocked", "Paws blocked today: " + locker.Today.ToString("N0"), false);
+                if (!nowLocked) popup.Nudge("Keyboard unlocked", settings.PawsBlocked + " today: " + locker.Today.ToString("N0"), false);
+                else if (locker.MouseLocked) popup.Nudge("Keyboard and mouse locked", "Type your unlock word to get them back.", true);
+                else popup.Nudge("Keyboard locked", "Type your unlock word to get it back.", true);
             };
             locker.KeysBlocked += delegate
             {
-                if (settings.NoteOnKeys) popup.Nudge("Keyboard's locked", "Type your unlock word to get it back.\nPaws blocked today: " + locker.Today.ToString("N0"), true);
+                if (settings.NoteOnKeys)
+                    popup.Nudge(locker.MouseLocked ? "Keyboard and mouse are locked" : "Keyboard's locked",
+                        "Type your unlock word to get " + (locker.MouseLocked ? "them" : "it") + " back.\n" + settings.PawsBlocked + " today: " + locker.Today.ToString("N0"), true);
             };
             locker.Failed += message => MessageBox.Show(message, "LoafLock", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            // LoafLock.exe opened again: show this copy's window
-            tick.Tick += delegate { if (showRequests.WaitOne(0)) OpenWindow(); };
+            // LoafLock.exe opened again: show this copy's window; or "LoafLock.exe lock" / "unlock"
+            tick.Tick += delegate
+            {
+                if (showRequests.WaitOne(0)) OpenWindow();
+                if (lockRequests.WaitOne(0)) locker.Lock(OpenWindowOrNull(), "command line");
+                if (unlockRequests.WaitOne(0)) locker.Unlock("command line");
+            };
             tick.Start();
+            Theme.Changed += Restyle;
+            SystemEvents.UserPreferenceChanged += WindowsLookChanged;
 
+            Restyle();
             Show();
             icon.Visible = true;
-            if (OpensWindowAtStart(quiet, settings.StartMinimized, settings.HasWord))
+            bool opens = OpensWindowAtStart(quiet, settings.StartMinimized, settings.HasWord);
+            if (opens || lockNow)
             {
                 locker.Post(delegate  // once LoafLock is up and running
                 {
-                    OpenWindow();
+                    if (opens) OpenWindow();
                     if (!settings.HasWord) locker.AskForWord(window);  // the first run
+                    if (lockNow && settings.HasWord) locker.Lock(OpenWindowOrNull(), "command line");
                 });
             }
+        }
+
+        // Windows switched between light and dark apps (or high contrast)
+        void WindowsLookChanged(object sender, UserPreferenceChangedEventArgs e)
+        {
+            if (e.Category == UserPreferenceCategory.General || e.Category == UserPreferenceCategory.Color)
+                locker.Post(Theme.Update);
+        }
+
+        void Restyle()
+        {
+            Theme.Apply(menu);
         }
 
         // the window opens when LoafLock starts, unless it started with Windows or minimized; the
@@ -94,17 +124,18 @@ namespace LoafLock
 
         void Show()
         {
-            bool isLocked = locker.IsLocked;
-            if (shownLocked != isLocked)
+            bool isLocked = locker.IsLocked, mouse = locker.MouseLocked;
+            if (shownLocked != isLocked || shownMouse != mouse)
             {
                 shownLocked = isLocked;
+                shownMouse = mouse;
                 icon.Icon = isLocked ? locked : unlocked;
-                lockItem.Text = isLocked ? "Unlock keyboard" : "Lock keyboard";
+                lockItem.Text = isLocked ? "Unlock keyboard" + (mouse ? " and mouse" : "") : "Lock keyboard";
             }
-            string tip = isLocked ? "LoafLock: keyboard locked · " + locker.Today.ToString("N0") + " paws blocked today" : "LoafLock: keyboard unlocked";
+            string tip = isLocked ? "LoafLock: keyboard" + (mouse ? " and mouse" : "") + " locked · " + locker.Today.ToString("N0") + " paws blocked today" : "LoafLock: keyboard unlocked";
             if (tip.Length > 63) tip = tip.Substring(0, 63);  // the most Windows takes
             if (icon.Text != tip) icon.Text = tip;
-            countItem.Text = "Paws blocked: " + locker.Today.ToString("N0") + " today · " + locker.Total.ToString("N0") + " all time";
+            countItem.Text = locker.Settings.PawsBlocked + ": " + locker.Today.ToString("N0") + " today · " + locker.Total.ToString("N0") + " all time";
         }
 
         // the window, when it's up, for a word prompt to go over
@@ -126,6 +157,10 @@ namespace LoafLock
             tick.Stop();
             tick.Dispose();
             showRequests.Dispose();
+            lockRequests.Dispose();
+            unlockRequests.Dispose();
+            Theme.Changed -= Restyle;
+            SystemEvents.UserPreferenceChanged -= WindowsLookChanged;
             locker.Changed -= Show;
             if (window != null) window.Dispose();
             popup.Dispose();

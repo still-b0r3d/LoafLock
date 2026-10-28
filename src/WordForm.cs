@@ -26,7 +26,6 @@ namespace LoafLock
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            BackColor = SystemColors.Window;
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             try { Icon = AppIcons.Load("loaflock.ico", SystemInformation.IconSize); } catch { }
@@ -59,18 +58,18 @@ namespace LoafLock
 
             body.Controls.Add(Note(
                 "While the keyboard is locked, typing this word gives it back. Letters only, at least " +
-                Settings.MinWordLength + ". It's not a password, just something a cat won't type.", SystemColors.ControlText));
+                Settings.MinWordLength + ". It's not a password, just something a cat won't type.", null));
 
             box = new TextBox { Width = 260, MaxLength = Settings.MaxWordLength, CharacterCasing = CharacterCasing.Lower, Text = current, Margin = new Padding(0, 4, 0, 4) };
             box.TextChanged += delegate { problem.Text = ""; };
             body.Controls.Add(box);
 
-            problem = Note("", Color.FromArgb(192, 32, 32));
+            problem = Note("", Theme.BadTag);
             body.Controls.Add(problem);
 
             body.Controls.Add(Note(
                 "Rukus's menu in the taskbar corner locks and unlocks too. If you're ever stuck: " +
-                "Ctrl+Alt+Del, Task Manager, end LoafLock.", SystemColors.GrayText));
+                "Ctrl+Alt+Del, Task Manager, end LoafLock.", Theme.DimTag));
 
             var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Anchor = AnchorStyles.Right, Margin = new Padding(0, 8, 0, 0) };
             var ok = MakeButton("OK");
@@ -89,7 +88,15 @@ namespace LoafLock
             AutoScaleMode = AutoScaleMode.Dpi;
             ResumeLayout(false);
             PerformLayout();
+            Theme.Apply(this);
+            Theme.Changed += Restyle;
+            Disposed += delegate { Theme.Changed -= Restyle; };
             Shown += delegate { box.Focus(); box.SelectAll(); };
+        }
+
+        void Restyle()
+        {
+            Theme.Apply(this);
         }
 
         void Done()
@@ -104,9 +111,10 @@ namespace LoafLock
             DialogResult = DialogResult.OK;
         }
 
-        static Label Note(string text, Color color)
+        // tag: Theme.DimTag, Theme.BadTag, or null for the window's text colour
+        static Label Note(string text, string tag)
         {
-            return new Label { Text = text, AutoSize = true, MaximumSize = new Size(360, 0), ForeColor = color, Margin = new Padding(0, 0, 0, 6) };
+            return new Label { Text = text, AutoSize = true, MaximumSize = new Size(360, 0), Tag = tag, Margin = new Padding(0, 0, 0, 6) };
         }
 
         static Button MakeButton(string text)

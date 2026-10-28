@@ -13,27 +13,38 @@ namespace LoafLock.Tests
     {
         static int TakeShots(string folder)
         {
-            Directory.CreateDirectory(folder);
             Settings.Dir = Path.Combine(Path.GetTempPath(), "LoafLockShots-" + Guid.NewGuid().ToString("N"));
+            Instance.Name = @"Local\LoafLockShots-" + Guid.NewGuid().ToString("N");
             try
             {
-                var settings = new Settings { UnlockWord = "rukus" };
-                settings.AddBlocked(212, DateTime.Now);
-                settings.BlockedTotal = 4051;
-                using (var locker = new Locker(settings, new KeyHook(new KeyGate(), true)))
-                using (var window = new MainForm(locker) { Quiet = true })
+                foreach (Look look in new[] { Look.Light, Look.Dark })
                 {
-                    ShowOffScreen(window);
-                    Shoot(window, Path.Combine(folder, "window-unlocked.png"));
-                    window.LockClicked();
-                    Pump(() => locker.IsLocked, "it didn't lock");
-                    Shoot(window, Path.Combine(folder, "window-locked.png"));
-                    window.LockClicked();
-                    Pump(() => !locker.IsLocked, "it didn't unlock");
-                    using (var options = new OptionsForm(locker) { Quiet = true })
+                    Theme.Set(look);
+                    string to = Path.Combine(folder, look.ToString().ToLowerInvariant());
+                    Directory.CreateDirectory(to);
+                    var settings = new Settings { UnlockWord = "rukus", CatName = "Biscuit", Look = look };
+                    settings.AddBlocked(212, DateTime.Now);
+                    settings.BlockedTotal = 4051;
+                    using (var locker = new Locker(settings, new KeyHook(new KeyGate(), true)))
+                    using (var window = new MainForm(locker) { Quiet = true })
                     {
-                        ShowOffScreen(options);
-                        Shoot(options, Path.Combine(folder, "options.png"));
+                        ShowOffScreen(window);
+                        Shoot(window, Path.Combine(to, "window-unlocked.png"));
+                        window.LockClicked();
+                        Pump(() => locker.IsLocked, "it didn't lock");
+                        Shoot(window, Path.Combine(to, "window-locked.png"));
+                        window.LockClicked();
+                        Pump(() => !locker.IsLocked, "it didn't unlock");
+                        using (var options = new OptionsForm(locker) { Quiet = true })
+                        {
+                            ShowOffScreen(options);
+                            Shoot(options, Path.Combine(to, "options.png"));
+                        }
+                    }
+                    using (var word = new WordForm("") { Quiet = true })
+                    {
+                        ShowOffScreen(word);
+                        Shoot(word, Path.Combine(to, "word-first-run.png"));
                     }
                 }
                 using (var popup = new Popup())
@@ -42,13 +53,10 @@ namespace LoafLock.Tests
                     Shoot(popup, Path.Combine(folder, "note-locked.png"));
                     popup.Set("Keyboard unlocked", "Paws blocked today: 212", false);
                     Shoot(popup, Path.Combine(folder, "note-unlocked.png"));
-                    popup.Set("Keyboard's locked", "Type your unlock word to get it back.\nPaws blocked today: 212", true);
+                    popup.Set("Keyboard's locked", "Type your unlock word to get it back.\nPaws blocked by Biscuit today: 212", true);
                     Shoot(popup, Path.Combine(folder, "note-on-a-key.png"));
-                }
-                using (var word = new WordForm("") { Quiet = true })
-                {
-                    ShowOffScreen(word);
-                    Shoot(word, Path.Combine(folder, "word-first-run.png"));
+                    popup.Set("Keyboard and mouse locked", "Type your unlock word to get them back.", true);
+                    Shoot(popup, Path.Combine(folder, "note-mouse-locked.png"));
                 }
                 Console.WriteLine("shots in " + folder);
                 return 0;

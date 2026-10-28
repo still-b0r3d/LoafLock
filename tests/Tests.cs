@@ -35,16 +35,24 @@ namespace LoafLock.Tests
             string home = Path.Combine(Path.GetTempPath(), "LoafLockTests-" + Guid.NewGuid().ToString("N"));
             Settings.Dir = home;
             Directory.CreateDirectory(home);
+            // names of their own, so nothing here reaches (or locks) a LoafLock that's really running
+            Instance.Name = @"Local\LoafLockTests-" + Guid.NewGuid().ToString("N");
 
             Run("version: the exe carries the version and the build", VersionMatches);
             Run("icons: built in, at every taskbar size", IconsAtEverySize);
             Run("icons: every size comes out as a picture, not static", IconsArePictures);
             Run("icon check: tells static from a picture", StaticIsCaught);
-            Run("settings: the unlock word is checked, saved and read back", SettingsRoundTrip);
+            Run("settings: the word, the mouse, the cat's name and the look are checked, saved and read back", SettingsRoundTrip);
             Run("gate: unlocked, every key goes through", GateUnlockedPasses);
-            Run("gate: locked, presses are dropped and counted", GateDropsWhileLocked);
-            Run("gate: never drops a release (a press that slipped past can't stick)", GateNeverDropsARelease);
+            Run("gate: locked, presses and their releases are dropped and counted", GateDropsWhileLocked);
+            Run("gate: Space's release goes with its press (YouTube pauses on a lone release)", GateDropsTheReleaseWithItsPress);
+            Run("gate: a key held since before the lock gets its release (it can't stick)", GateKeyHeldFromBefore);
+            Run("gate: just after a renewal, a key gets its release too (key remappers)", GateAfterARehook);
+            Run("gate: a press that came late gets its release (it may have got through)", GateLatePress);
+            Run("gate: a key already repeating when first seen gets its release", GateAlreadyRepeating);
+            Run("gate: a key gone quiet under a paw (another key repeating) keeps its release dropped", GateTwoPaws);
             Run("gate: a key held across the unlock stays dropped until it's let go", GateHeldAcrossUnlock);
+            Run("gate: mouse buttons, paired, never given up on while locked, and not part of the word", GateMouseButtons);
             Run("gate: a release Windows never sent doesn't keep a key dropped", GateLostRelease);
             Run("gate: slow repeats (Filter Keys) aren't new presses", GateSlowRepeats);
             Run("word: typing it unlocks", WordUnlocks);
@@ -52,13 +60,16 @@ namespace LoafLock.Tests
             Run("word: a wrong key starts it over; Shift doesn't matter", WordWrongKeysAndShift);
             Run("word: near misses still count ('aaab' unlocks 'aab')", WordNearMisses);
             Run("word: a held key's repeats don't type it; no word, no unlock", WordNeedsFreshPresses);
-            Run("hook: the real hook blocks, renews itself and lets go", LiveHook);
+            Run("hook: the real hook blocks presses and their releases, renews itself and lets go", LiveHook);
+            Run("hook: the mouse locks only when asked, and lets go when Windows is locked", LiveMouseHook);
             Run("counts: today starts over each day; saved and read back", CountsByDay);
             Run("start with Windows: on, off, and what it runs", StartupEntry);
             Run("pop-up: shows without taking focus, lets clicks through, fades", PopupNeverTakesFocus);
             Run("start: the window opens unless minimized or with Windows; always on the first run", WindowAtStart);
             Run("window: follows the lock, the word and the counts; shows the version", WindowFollowsTheLock);
             Run("options: the boxes show the settings and save changes right away", OptionsApplyRightAway);
+            Run("command line: lock and unlock reach the running copy", CommandLine);
+            Run("look: windows turn dark and light again", Looks);
             Run("remove my settings: the folder and the sign-in entry go", RemoveSettingsForgetsAll);
 
             try { Directory.Delete(home, true); } catch { }
