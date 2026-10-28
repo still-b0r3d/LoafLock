@@ -4,7 +4,7 @@ Keeps a cat lying on the keyboard from typing. LoafLock sits in the Windows task
 as Rukus. Lock the keyboard from there, and key presses go nowhere while the mouse keeps
 working.
 
-**Work in progress.** v0.1 isn't out yet.
+**Work in progress.** Version 0.2, not released yet.
 
 ## Using it
 
