@@ -3,13 +3,20 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Reflection;
+using System.Windows.Forms;
 
 namespace LoafLock.Tests
 {
-    // Runs every test. No keyboard is ever locked by them.
-    static class TestMain
+    // a test that can't run here (and says why) rather than one that failed
+    sealed class SkipException : Exception
     {
-        static int passed, failed;
+        public SkipException(string why) : base(why) { }
+    }
+
+    // Runs every test. No keyboard is ever locked by them.
+    static partial class TestMain
+    {
+        static int passed, failed, skipped;
 
         // both of LoafLock's icons, at the taskbar corner's sizes for 100, 125, 150, 175, 200 and
         // 250 % scaling, and the sizes a window uses
@@ -19,17 +26,36 @@ namespace LoafLock.Tests
         [STAThread]
         static int Main(string[] args)
         {
+            // whatever goes wrong, the run ends with a line saying so: never an error dialog
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (s, e) => { Console.WriteLine("FAIL  a window threw: " + e.Exception); Environment.Exit(3); };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => { Console.WriteLine("FAIL  crashed: " + e.ExceptionObject); Environment.Exit(3); };
+
             string home = Path.Combine(Path.GetTempPath(), "LoafLockTests-" + Guid.NewGuid().ToString("N"));
-            Log.Dir = home;
+            Settings.Dir = home;
+            Directory.CreateDirectory(home);
 
             Run("version: the exe carries the version and the build", VersionMatches);
             Run("icons: built in, at every taskbar size", IconsAtEverySize);
             Run("icons: every size comes out as a picture, not static", IconsArePictures);
             Run("icon check: tells static from a picture", StaticIsCaught);
+            Run("settings: the unlock word is checked, saved and read back", SettingsRoundTrip);
+            Run("gate: unlocked, every key goes through", GateUnlockedPasses);
+            Run("gate: locked, presses are dropped and counted", GateDropsWhileLocked);
+            Run("gate: never drops a release (a press that slipped past can't stick)", GateNeverDropsARelease);
+            Run("gate: a key held across the unlock stays dropped until it's let go", GateHeldAcrossUnlock);
+            Run("gate: a release Windows never sent doesn't keep a key dropped", GateLostRelease);
+            Run("gate: slow repeats (Filter Keys) aren't new presses", GateSlowRepeats);
+            Run("word: typing it unlocks", WordUnlocks);
+            Run("word: works with a paw resting on another key", WordWithAPawOnTheKeys);
+            Run("word: a wrong key starts it over; Shift doesn't matter", WordWrongKeysAndShift);
+            Run("word: near misses still count ('aaab' unlocks 'aab')", WordNearMisses);
+            Run("word: a held key's repeats don't type it; no word, no unlock", WordNeedsFreshPresses);
+            Run("hook: the real hook blocks, renews itself and lets go", LiveHook);
 
             try { Directory.Delete(home, true); } catch { }
             Console.WriteLine();
-            Console.WriteLine(passed + " passed, " + failed + " failed");
+            Console.WriteLine(passed + " passed, " + failed + " failed" + (skipped > 0 ? ", " + skipped + " skipped" : ""));
             return failed == 0 ? 0 : 1;
         }
 
@@ -40,6 +66,11 @@ namespace LoafLock.Tests
                 test();
                 passed++;
                 Console.WriteLine("PASS  " + name);
+            }
+            catch (SkipException e)
+            {
+                skipped++;
+                Console.WriteLine("SKIP  " + name + ": " + e.Message);
             }
             catch (Exception e)
             {

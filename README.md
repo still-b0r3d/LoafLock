@@ -4,10 +4,22 @@ Keeps a cat lying on the keyboard from typing. LoafLock sits in the Windows task
 as Rukus. Lock the keyboard from there, and key presses go nowhere while the mouse keeps
 working.
 
-**Work in progress.** v0.1 isn't out yet. For now LoafLock only shows Rukus in the taskbar
-corner; locking comes next.
+**Work in progress.** v0.1 isn't out yet.
 
-What it will never do: connect to the internet, or keep what you type.
+## Using it
+
+1. Run `LoafLock.exe`. The first time, it asks for an **unlock word** (letters only, at
+   least 4): a word a cat won't type.
+2. Right-click Rukus in the taskbar corner and pick **Lock keyboard**. He gets a gold
+   padlock, and key presses go nowhere. The mouse keeps working.
+3. To get the keyboard back, type your unlock word, or right-click Rukus and pick
+   **Unlock keyboard**.
+
+If you're ever stuck: Ctrl+Alt+Del, Task Manager, end LoafLock. The keyboard comes back at
+once.
+
+What it never does: connect to the internet, or keep what you type. While unlocked it
+doesn't look at the keyboard at all.
 
 ## Build it yourself
 

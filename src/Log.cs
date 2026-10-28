@@ -9,10 +9,7 @@ namespace LoafLock
     {
         static readonly object Lock = new object();
 
-        // the tests point this at a folder of their own
-        public static string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LoafLock");
-
-        public static string FilePath { get { return Path.Combine(Dir, "LoafLock.log"); } }
+        public static string FilePath { get { return Path.Combine(Settings.Dir, "LoafLock.log"); } }
 
         public static void Write(string message)
         {
@@ -20,7 +17,7 @@ namespace LoafLock
             {
                 try
                 {
-                    Directory.CreateDirectory(Dir);
+                    Directory.CreateDirectory(Settings.Dir);
                     var info = new FileInfo(FilePath);
                     if (info.Exists && info.Length > 256 * 1024)
                     {

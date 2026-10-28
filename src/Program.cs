@@ -1,6 +1,6 @@
 // LoafLock: locks the keyboard so a cat lying on it can't type. The mouse keeps working.
 //
-//   LoafLock.exe            sits in the taskbar corner as Rukus
+//   LoafLock.exe            sits in the taskbar corner as Rukus; right-click him to lock
 //   LoafLock.exe --version  print the version
 using System;
 using System.Runtime.InteropServices;
@@ -27,7 +27,7 @@ namespace LoafLock
             Application.ThreadException += delegate(object sender, ThreadExceptionEventArgs e)
             {
                 Log.Write("unhandled: " + e.Exception);
-                MessageBox.Show("LoafLock hit an error: " + e.Exception.Message + "\n\nThe details are in LoafLock.log in " + Log.Dir + ".",
+                MessageBox.Show("LoafLock hit an error: " + e.Exception.Message + "\n\nThe details are in LoafLock.log in " + Settings.Dir + ".",
                     "LoafLock", MessageBoxButtons.OK, MessageBoxIcon.Error);
             };
             AppDomain.CurrentDomain.UnhandledException += delegate(object sender, UnhandledExceptionEventArgs e) { Log.Write("crashed: " + e.ExceptionObject); };
@@ -48,7 +48,7 @@ namespace LoafLock
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Log.Write("started " + VersionText);
-                using (new Tray()) Application.Run();
+                using (new Tray(Settings.Load())) Application.Run();
                 Log.Write("quit");
             }
             return 0;
