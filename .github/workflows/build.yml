@@ -1,0 +1,40 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# read-only: this only builds and tests
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build and test
+        shell: cmd
+        env:
+          LOAFLOCK_BUILD: ${{ github.sha }}
+        run: build.cmd test
+
+      - name: Checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash bin\LoafLock.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  LoafLock.exe" | Out-File bin\LoafLock.exe.sha256 -Encoding ascii
+          Get-Content bin\LoafLock.exe.sha256
+          (Get-Item bin\LoafLock.exe).VersionInfo.ProductVersion
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: LoafLock
+          path: |
+            bin/LoafLock.exe
+            bin/LoafLock.exe.sha256

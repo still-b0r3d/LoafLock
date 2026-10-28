@@ -1,0 +1,37 @@
+using System;
+using System.IO;
+
+namespace LoafLock
+{
+    // What LoafLock did and when, in %APPDATA%\LoafLock\LoafLock.log (kept under about 256 KB).
+    // It never holds which keys were pressed.
+    static class Log
+    {
+        static readonly object Lock = new object();
+
+        // the tests point this at a folder of their own
+        public static string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LoafLock");
+
+        public static string FilePath { get { return Path.Combine(Dir, "LoafLock.log"); } }
+
+        public static void Write(string message)
+        {
+            lock (Lock)
+            {
+                try
+                {
+                    Directory.CreateDirectory(Dir);
+                    var info = new FileInfo(FilePath);
+                    if (info.Exists && info.Length > 256 * 1024)
+                    {
+                        string old = FilePath + ".old";
+                        if (File.Exists(old)) File.Delete(old);
+                        File.Move(FilePath, old);
+                    }
+                    File.AppendAllText(FilePath, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "  " + message + Environment.NewLine);
+                }
+                catch { }
+            }
+        }
+    }
+}
