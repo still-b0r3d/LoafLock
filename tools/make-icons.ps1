@@ -1,7 +1,8 @@
 # Builds LoafLock's two tray icons into assets\ from Rukus (art\rukus.ico, the same file as
 # b0r3d.org's imgs/rukus.ico). Run it again after changing the art or the lock:
 #   powershell -ExecutionPolicy Bypass -File tools\make-icons.ps1
-#   -Look gold|red|bars   the locked look that goes into loaflock-locked.ico
+#   -Look gold|red|bars   the locked look that goes into loaflock-locked.ico (LoafLock's is
+#                         gold, picked 2026-10-27; red and bars stay for the -Sheet comparison)
 #   -Sheet <file.png>     also draws every look side by side on a dark and a light taskbar
 # rukus.ico packs its pictures as PNG, which .NET Framework's icon loader turns into static
 # under 256 px, so these icons hold 16-64 px pictures as plain bitmaps, plus a 256 px PNG.
