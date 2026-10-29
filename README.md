@@ -4,7 +4,7 @@ Keeps a cat lying on the keyboard from typing. LoafLock sits in the Windows task
 as Rukus. Lock the keyboard from there, and key presses go nowhere while the mouse keeps
 working (or locks too, if you like).
 
-**Work in progress.** Version 0.6, not released yet.
+**Work in progress.** Version 0.7, not released yet.
 
 ## Using it
 
@@ -25,7 +25,8 @@ unlock word. **Options** (in its menu bar, or Rukus's menu) has:
 - **Locking by itself** after 5 to 60 minutes with nobody using the keyboard or mouse (off
   to start with). Watching a video without touching anything counts; a fullscreen game
   doesn't. It locks only the keyboard, so whoever comes back can click Unlock;
-- the notes (on locking and unlocking, or on every blocked key);
+- the notes (on locking and unlocking, or on every blocked key). When the cat's been lying
+  on the keyboard for half a minute, Rukus nods off in one: "Biscuit is loafing";
 - **your cat's name**, for "Paws blocked by Biscuit";
 - **Lock the mouse too** (off to start with): the pointer, the buttons and the wheel stop
   as well, and only your unlock word gets things back;

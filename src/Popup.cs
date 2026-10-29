@@ -24,9 +24,10 @@ namespace LoafLock
         readonly Timer fade = new Timer { Interval = 30 };
         readonly Icon lockedRukus, rukus;
         readonly Font titleFont = new Font("Segoe UI Semibold", 11.5f), textFont = new Font("Segoe UI", 9f);
+        readonly Font[] zFonts = { new Font("Segoe UI Black", 8f), new Font("Segoe UI Black", 10f), new Font("Segoe UI Black", 12.5f) };
         readonly int pad;
         string title = "", text = "";
-        bool showsLocked = true;
+        bool showsLocked = true, sleepy;
         int lastNudge;
         bool fadingIn;
 
@@ -67,19 +68,21 @@ namespace LoafLock
             DwmSetWindowAttribute(Handle, 33, ref round, sizeof(int));
         }
 
-        // what the note says, and which Rukus (the screenshot tool sets it without showing it)
-        internal void Set(string heading, string line, bool locked)
+        // what the note says, and which Rukus: with the padlock (locked), nodding off (sleepy).
+        // The screenshot tool sets it without showing it.
+        internal void Set(string heading, string line, bool locked, bool sleepy = false)
         {
             title = heading ?? "";
             text = line ?? "";
             showsLocked = locked;
+            this.sleepy = sleepy;
             Invalidate();
         }
 
         // show the note, or keep it up a while longer
-        public void Nudge(string heading, string line, bool locked)
+        public void Nudge(string heading, string line, bool locked, bool sleepy = false)
         {
-            Set(heading, line, locked);
+            Set(heading, line, locked, sleepy);
             lastNudge = Environment.TickCount;
             if (!Visible)
             {
@@ -112,13 +115,25 @@ namespace LoafLock
         {
             Graphics g = e.Graphics;
             Icon picture = showsLocked ? lockedRukus : rukus;
-            g.DrawIcon(picture, pad, (ClientSize.Height - picture.Height) / 2);
+            int top0 = (ClientSize.Height - picture.Height) / 2;
+            g.DrawIcon(picture, pad, top0);
+            if (sleepy) Zzz(g, pad, top0, picture.Width);
             int x = pad * 2 + picture.Width, width = ClientSize.Width - x - pad;
             Size head = TextRenderer.MeasureText(g, title, titleFont);
             Size body = TextRenderer.MeasureText(g, text, textFont, new Size(width, ClientSize.Height), TextFormatFlags.WordBreak);
             int top = (ClientSize.Height - head.Height - body.Height) / 2;
             TextRenderer.DrawText(g, title, titleFont, new Point(x, top), Color.White);
             TextRenderer.DrawText(g, text, textFont, new Rectangle(x, top + head.Height, width, body.Height), Color.FromArgb(205, 205, 210), TextFormatFlags.WordBreak);
+        }
+
+        // "z Z Z" drifting up from the top right of Rukus's head, small to big
+        void Zzz(Graphics g, int x, int y, int size)
+        {
+            float s = size / 48f;
+            var color = Color.FromArgb(160, 195, 255);
+            float[][] at = { new[] { 0.62f, 0.16f }, new[] { 0.80f, -0.04f }, new[] { 1.00f, -0.27f } };  // as parts of the picture's size
+            for (int i = 0; i < zFonts.Length; i++)
+                TextRenderer.DrawText(g, i == 0 ? "z" : "Z", zFonts[i], new Point(x + (int)(at[i][0] * 48 * s), y + (int)(at[i][1] * 48 * s)), color, TextFormatFlags.NoPadding);
         }
 
         protected override void WndProc(ref Message m)
@@ -140,6 +155,7 @@ namespace LoafLock
                 rukus.Dispose();
                 titleFont.Dispose();
                 textFont.Dispose();
+                foreach (Font z in zFonts) z.Dispose();
             }
             base.Dispose(disposing);
         }

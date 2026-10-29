@@ -34,6 +34,9 @@ namespace LoafLock
         public event Action Changed;         // locked or unlocked, the word, the counts, or a setting
         public event Action<bool> LockedChanged;  // true: just locked; false: just unlocked
         public event Action KeysBlocked;     // keys were blocked just now
+        public event Action LongLoaf;        // the cat's been on the keyboard a good while (once per loaf)
+
+        readonly LoafWatch loaf = new LoafWatch();
         public event Action<string> Failed;  // the keyboard couldn't be locked; says why
 
         public Locker(Settings settings, KeyHook hook)
@@ -45,7 +48,11 @@ namespace LoafLock
             hook.LockChanged += locked => Post(delegate { SetLocked(locked); });
             hook.Failed += message => Post(delegate { if (Failed != null) Failed(message); });
             hook.Note += line => Post(delegate { Log.Write(line); });  // the hook's thread never writes files
-            poll.Tick += delegate { CountBlocked(true); };
+            poll.Tick += delegate
+            {
+                bool blocked = CountBlocked(true);
+                if (loaf.Tick(Environment.TickCount, blocked) && LongLoaf != null) LongLoaf();
+            };
             hotkey.Pressed += delegate { Lock(null, "hotkey"); };
             ApplyHotkey();
             idleCheck.Tick += delegate
@@ -174,6 +181,7 @@ namespace LoafLock
             IsLocked = locked;
             MouseLocked = locked && hook.MouseInstalled;
             Log.Write(locked ? (MouseLocked ? "locked, the mouse too" : "locked") : "unlocked");
+            loaf.Reset();
             if (locked) poll.Start();
             else
             {
@@ -186,17 +194,19 @@ namespace LoafLock
             if (Changed != null) Changed();
         }
 
-        // tell: let the window and the pop-up know (not while closing)
-        void CountBlocked(bool tell)
+        // tell: let the window and the pop-up know (not while closing). True when there were
+        // any new ones.
+        bool CountBlocked(bool tell)
         {
             int now = hook.Blocked;
             int fresh = now - counted;
-            if (fresh <= 0) return;
+            if (fresh <= 0) return false;
             counted = now;
             Settings.AddBlocked(fresh, DateTime.Now);
-            if (!tell) return;
+            if (!tell) return true;
             if (KeysBlocked != null) KeysBlocked();
             if (Changed != null) Changed();
+            return true;
         }
 
         public void Save()

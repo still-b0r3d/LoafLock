@@ -117,6 +117,25 @@ namespace LoafLock.Tests
             Check(back.IdleLock && back.IdleMinutes == Idle.DefaultMinutes, "a made-up number of minutes was taken");
         }
 
+        // 0.7: a long loaf, said once
+        static void LongLoaf()
+        {
+            var w = new LoafWatch { LoafMs = 30000, GapMs = 2500 };
+            int t = 1000, told = 0;
+            for (int i = 0; i < 400; i++, t += 150) if (w.Tick(t, true)) told++;  // 60 s of paws
+            Check(told == 1, "60 s of paws was told " + told + " times, expected once");
+
+            w = new LoafWatch { LoafMs = 30000, GapMs = 2500 };
+            told = 0;
+            for (int i = 0; i < 400; i++, t += 150) if (w.Tick(t, i % 40 < 20)) told++;  // 3 s on, 3 s off
+            Check(told == 0, "paws with breaks were taken for a loaf");
+
+            for (int i = 0; i < 220; i++, t += 150) if (w.Tick(t, true)) told++;
+            for (int i = 0; i < 30; i++, t += 150) w.Tick(t, false);  // the cat gets up
+            for (int i = 0; i < 220; i++, t += 150) if (w.Tick(t, true)) told++;  // and lies down again
+            Check(told == 2, "two loaves were told " + told + " times, expected twice");
+        }
+
         static void OptionsHotkeyAndVolume()
         {
             var settings = new Settings { UnlockWord = "rukus", Hotkey = new Hotkey(Keys.F23, Keys.None) };

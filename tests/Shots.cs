@@ -57,6 +57,10 @@ namespace LoafLock.Tests
                     Shoot(popup, Path.Combine(folder, "note-on-a-key.png"));
                     popup.Set("Keyboard and mouse locked", "Type your unlock word to get them back.", true);
                     Shoot(popup, Path.Combine(folder, "note-mouse-locked.png"));
+                    popup.Set("Biscuit is loafing", "Nothing gets typed: the keyboard's locked.", true, true);
+                    Shoot(popup, Path.Combine(folder, "note-loafing.png"));
+                    popup.Set("Keyboard locked by itself", "Nobody used the PC for 10 minutes. Type your unlock word to get it back.", true);
+                    Shoot(popup, Path.Combine(folder, "note-idle.png"));
                 }
                 Console.WriteLine("shots in " + folder);
                 return 0;

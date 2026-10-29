@@ -74,6 +74,7 @@ namespace LoafLock.Tests
             Run("hotkey: pressing it locks; a taken one says so", HotkeyLocks);
             Run("idle lock: after the minutes, not in a game, never the mouse, counted from the last unlock", IdleLocks);
             Run("options: the hotkey, the volume keys and the idle lock; a taken hotkey puts the old one back", OptionsHotkeyAndVolume);
+            Run("loaf: 30 s of paws without a break is a long loaf, told once", LongLoaf);
             Run("look: windows turn dark and light again", Looks);
             Run("remove my settings: the folder and the sign-in entry go", RemoveSettingsForgetsAll);
 
