@@ -69,6 +69,10 @@ namespace LoafLock.Tests
             Run("window: follows the lock, the word and the counts; shows the version", WindowFollowsTheLock);
             Run("options: the boxes show the settings and save changes right away", OptionsApplyRightAway);
             Run("command line: lock and unlock reach the running copy", CommandLine);
+            Run("hotkey: read, written and checked; the picker takes only good ones", HotkeyText);
+            Run("gate: with the option, the volume keys go straight through", GateVolumeThrough);
+            Run("hotkey: pressing it locks; a taken one says so", HotkeyLocks);
+            Run("options: the hotkey and the volume keys; a taken hotkey puts the old one back", OptionsHotkeyAndVolume);
             Run("look: windows turn dark and light again", Looks);
             Run("remove my settings: the folder and the sign-in entry go", RemoveSettingsForgetsAll);
 

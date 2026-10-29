@@ -25,6 +25,11 @@ namespace LoafLock
 
         public bool LockMouse;  // lock the mouse too: the pointer, the buttons and the wheel
 
+        public bool HotkeyOn;                     // lock with a hotkey (it never unlocks)
+        public Hotkey Hotkey = Hotkey.Default;
+
+        public bool VolumeThrough;  // Mute, Volume Down and Volume Up still work while locked
+
         // "Paws blocked by Biscuit": the cat's name, or "" for none
         public string CatName = "";
         public const int MaxNameLength = 24;
@@ -117,6 +122,13 @@ namespace LoafLock
                     case "note_on_keys": s.NoteOnKeys = !IsNo(value); break;
                     case "start_minimized": s.StartMinimized = !IsNo(value); break;
                     case "lock_mouse": s.LockMouse = !IsNo(value); break;
+                    case "hotkey_on": s.HotkeyOn = !IsNo(value); break;
+                    case "hotkey":
+                        Hotkey hotkey;
+                        if (Hotkey.TryParse(value, out hotkey)) s.Hotkey = hotkey;
+                        else Log.Write("settings: the hotkey in settings.ini isn't one LoafLock takes, so it was ignored");
+                        break;
+                    case "volume_through": s.VolumeThrough = !IsNo(value); break;
                     case "cat_name": s.CatName = CleanName(value); break;
                     case "look":
                         switch (value.ToLowerInvariant())
@@ -146,6 +158,9 @@ namespace LoafLock
                 "note_on_keys=" + (NoteOnKeys ? "yes" : "no") + "\r\n" +
                 "start_minimized=" + (StartMinimized ? "yes" : "no") + "\r\n" +
                 "lock_mouse=" + (LockMouse ? "yes" : "no") + "\r\n" +
+                "hotkey_on=" + (HotkeyOn ? "yes" : "no") + "\r\n" +
+                "hotkey=" + Hotkey + "\r\n" +
+                "volume_through=" + (VolumeThrough ? "yes" : "no") + "\r\n" +
                 "cat_name=" + CatName + "\r\n" +
                 "look=" + Look.ToString().ToLowerInvariant() + "\r\n" +
                 "blocked_total=" + BlockedTotal + "\r\n" +

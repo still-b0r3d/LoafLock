@@ -45,7 +45,7 @@ namespace LoafLock
         readonly ManualResetEvent ready = new ManualResetEvent(false);
         volatile uint threadId;
         volatile string word = "";
-        volatile bool installed, mouseInstalled, mouseToo;
+        volatile bool installed, mouseInstalled, mouseToo, volumeThrough;
         volatile int rehooks;
         IntPtr hook, mouseHook;
         UIntPtr timer;
@@ -71,6 +71,7 @@ namespace LoafLock
 
         public string Word { set { word = value ?? ""; } }
         public bool MouseToo { set { mouseToo = value; } }  // lock the mouse too, from the next Lock on
+        public bool VolumeThrough { set { volumeThrough = value; } }  // let the volume keys through, from the next Lock on
         public bool Installed { get { return installed; } }
         public bool MouseInstalled { get { return mouseInstalled; } }
         public int Rehooks { get { return rehooks; } }
@@ -134,6 +135,7 @@ namespace LoafLock
             gate.LostReleaseMs = Math.Max(1500, gap + 500);
             gate.HeldGraceMs = gap + 100;
             gate.RepeatSplitMs = RepeatSplitMs();
+            gate.PassVolume = volumeThrough;
             if (mouseToo) { if (mouseHook == IntPtr.Zero) InstallMouse(); }
             else if (mouseHook != IntPtr.Zero) RemoveMouse();
             gate.Lock(Environment.TickCount);

@@ -12,7 +12,10 @@ namespace LoafLock
 
         readonly Locker locker;
         readonly FlowLayoutPanel body;
-        readonly CheckBox noteOnLock, noteOnKeys, mouse, minimized, startup;
+        FlowLayoutPanel column;  // where Heading, Line and Check add to
+        readonly CheckBox hotkeyOn, volume, noteOnLock, noteOnKeys, mouse, minimized, startup;
+        readonly Label hotkeyText, hotkeyProblem;
+        readonly LinkLabel changeHotkey;
         readonly TextBox catName;
         readonly RadioButton lookWindows, lookLight, lookDark;
         readonly Button remove;
@@ -44,7 +47,37 @@ namespace LoafLock
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Padding = new Padding(24, 12, 24, 16)
             };
+            var columns = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
+            body.Controls.Add(columns);
 
+            // ---- left: how it locks ----
+            column = Column(columns, new Padding(0, 0, 32, 0));
+            Heading("Hotkey");
+            var hotkeyRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 4) };
+            hotkeyOn = new CheckBox { Text = "Lock with a hotkey:", AutoSize = true, Margin = new Padding(0, 2, 6, 0) };
+            hotkeyOn.CheckedChanged += delegate { if (!loading) HotkeyChanged(hotkeyOn.Checked, locker.Settings.Hotkey); };
+            hotkeyRow.Controls.Add(hotkeyOn);
+            hotkeyText = new Label { AutoSize = true, Font = new Font(Font, FontStyle.Bold), Margin = new Padding(0, 3, 10, 0) };
+            hotkeyRow.Controls.Add(hotkeyText);
+            changeHotkey = new LinkLabel { Text = "Change…", AutoSize = true, LinkBehavior = LinkBehavior.HoverUnderline, Margin = new Padding(0, 3, 0, 0) };
+            changeHotkey.LinkClicked += delegate { PickHotkey(); };
+            hotkeyRow.Controls.Add(changeHotkey);
+            column.Controls.Add(hotkeyRow);
+            hotkeyProblem = new Label { AutoSize = true, MaximumSize = new Size(ColumnWidth, 0), Tag = Theme.BadTag, Margin = new Padding(0, 0, 0, 2) };
+            column.Controls.Add(hotkeyProblem);
+            Line("It only locks. It can't unlock, so a cat can't either.");
+
+            Heading("While locked");
+            volume = Check("Let the volume keys through", on => { locker.Settings.VolumeThrough = on; locker.Save(); });
+            Line("Mute, volume up and down, and a volume knob still work. Play/pause stays locked, or a paw on it would pause the video.");
+
+            Heading("The mouse");
+            mouse = Check("Lock the mouse too", on => { locker.Settings.LockMouse = on; locker.Save(); });
+            Line("From the next lock, the pointer, the buttons and the wheel stop too, so only your unlock word gets things back. " +
+                "If you're stuck: Ctrl+Alt+Del, Lock, then sign back in, and the mouse works again.");
+
+            // ---- right: notes, the cat, the look, starting ----
+            column = Column(columns, new Padding(0));
             Heading("Notes in the corner");
             noteOnLock = Check("When the keyboard locks or unlocks", on => { locker.Settings.NoteOnLock = on; locker.Save(); });
             noteOnKeys = Check("On every blocked key", on => { locker.Settings.NoteOnKeys = on; locker.Save(); });
@@ -56,20 +89,15 @@ namespace LoafLock
             catName = new TextBox { Width = 200, MaxLength = Settings.MaxNameLength, Margin = new Padding(0) };
             catName.TextChanged += delegate { if (!loading) NameChanged(); };
             nameRow.Controls.Add(catName);
-            body.Controls.Add(nameRow);
+            column.Controls.Add(nameRow);
             Line("Shown with the paw counts: \"Paws blocked by Rukus\". Leave it empty for none.");
-
-            Heading("The mouse");
-            mouse = Check("Lock the mouse too", on => { locker.Settings.LockMouse = on; locker.Save(); });
-            Line("From the next lock, the pointer, the buttons and the wheel stop too, so only your unlock word gets things back. " +
-                "If you're stuck: Ctrl+Alt+Del, Lock, then sign back in, and the mouse works again.");
 
             Heading("Look");
             var looks = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 4) };
             lookWindows = LookChoice(looks, "Like Windows", Look.Windows);
             lookLight = LookChoice(looks, "Light", Look.Light);
             lookDark = LookChoice(looks, "Dark", Look.Dark);
-            body.Controls.Add(looks);
+            column.Controls.Add(looks);
 
             Heading("Starting");
             minimized = Check("Start minimized (just Rukus in the taskbar corner)", on => { locker.Settings.StartMinimized = on; locker.Save(); });
@@ -78,7 +106,7 @@ namespace LoafLock
             Heading("Your settings");
             remove = new Button { Text = "Remove my settings…", AutoSize = true, MinimumSize = new Size(0, 28), Padding = new Padding(8, 0, 8, 0), UseVisualStyleBackColor = true, Margin = new Padding(0, 0, 0, 4) };
             remove.Click += delegate { RemoveSettings(); };
-            body.Controls.Add(remove);
+            column.Controls.Add(remove);
             Line("Forgets your unlock word, your cat's name and the paw counts, removes the sign-in entry, then quits LoafLock.");
 
             var close = new Button { Text = "Close", AutoSize = true, MinimumSize = new Size(88, 28), UseVisualStyleBackColor = true, Anchor = AnchorStyles.Right, Margin = new Padding(0, 14, 0, 0) };
@@ -119,6 +147,9 @@ namespace LoafLock
         internal CheckBox NoteOnKeysBox { get { return noteOnKeys; } }
         internal CheckBox MinimizedBox { get { return minimized; } }
         internal CheckBox MouseBox { get { return mouse; } }
+        internal CheckBox HotkeyBox { get { return hotkeyOn; } }
+        internal CheckBox VolumeBox { get { return volume; } }
+        internal string HotkeyProblemText { get { return hotkeyProblem.Text; } }
         internal TextBox CatNameBox { get { return catName; } }
         internal RadioButton LookBox(Look look) { return look == Look.Light ? lookLight : look == Look.Dark ? lookDark : lookWindows; }
 
@@ -126,6 +157,11 @@ namespace LoafLock
         {
             loading = true;
             Settings s = locker.Settings;
+            hotkeyOn.Checked = s.HotkeyOn;
+            hotkeyText.Text = s.Hotkey.ToString();
+            hotkeyProblem.Text = locker.HotkeyProblem ?? "";
+            hotkeyProblem.Visible = locker.HotkeyProblem != null;
+            volume.Checked = s.VolumeThrough;  // it applies from the next lock
             noteOnLock.Checked = s.NoteOnLock;
             noteOnKeys.Checked = s.NoteOnKeys;
             mouse.Checked = s.LockMouse;  // it applies from the next lock
@@ -135,6 +171,39 @@ namespace LoafLock
             // nothing here is greyed out while locked: greyed-out text is hard to read in dark
             // mode, so "Remove my settings…" says why it won't instead
             loading = false;
+        }
+
+        // on or off, or a new combo: Windows is asked for it straight away, and if something
+        // else has it, the old setting comes back and it says why
+        internal void HotkeyChanged(bool on, Hotkey hotkey)
+        {
+            Settings s = locker.Settings;
+            bool wasOn = s.HotkeyOn;
+            Hotkey was = s.Hotkey;
+            s.HotkeyOn = on;
+            s.Hotkey = hotkey;
+            if (!locker.ApplyHotkey())
+            {
+                string why = locker.HotkeyProblem;
+                s.HotkeyOn = wasOn;
+                s.Hotkey = was;
+                locker.ApplyHotkey();
+                locker.SettingsChanged();  // Fill shows the old setting again...
+                hotkeyProblem.Text = why;  // ...and why
+                hotkeyProblem.Visible = true;
+                return;
+            }
+            Log.Write(on ? "hotkey " + hotkey + " locks" : "no hotkey");
+            locker.SettingsChanged();
+        }
+
+        void PickHotkey()
+        {
+            using (var pick = new HotkeyForm(locker.Settings.Hotkey))
+            {
+                if (pick.ShowDialog(this) != DialogResult.OK) return;
+                HotkeyChanged(true, pick.Picked);  // picking one turns it on
+            }
         }
 
         void NameChanged()
@@ -193,21 +262,37 @@ namespace LoafLock
             Close();
         }
 
+        // one of the two columns, ColumnWidth wide
+        static FlowLayoutPanel Column(FlowLayoutPanel row, Padding margin)
+        {
+            var c = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(ColumnWidth, 0),
+                Margin = margin
+            };
+            row.Controls.Add(c);
+            return c;
+        }
+
         void Heading(string text)
         {
-            body.Controls.Add(new Label { Text = text, AutoSize = true, Font = new Font(Font, FontStyle.Bold), Margin = new Padding(0, 10, 0, 6) });
+            column.Controls.Add(new Label { Text = text, AutoSize = true, Font = new Font(Font, FontStyle.Bold), Margin = new Padding(0, 10, 0, 6) });
         }
 
         void Line(string text)
         {
-            body.Controls.Add(new Label { Text = text, AutoSize = true, MaximumSize = new Size(ColumnWidth, 0), Tag = Theme.DimTag, Margin = new Padding(0, 2, 0, 4) });
+            column.Controls.Add(new Label { Text = text, AutoSize = true, MaximumSize = new Size(ColumnWidth, 0), Tag = Theme.DimTag, Margin = new Padding(0, 2, 0, 4) });
         }
 
         CheckBox Check(string text, Action<bool> changed)
         {
             var box = new CheckBox { Text = text, AutoSize = true, Margin = new Padding(0, 0, 0, 4) };
             box.CheckedChanged += delegate { if (!loading) changed(box.Checked); };
-            body.Controls.Add(box);
+            column.Controls.Add(box);
             return box;
         }
     }

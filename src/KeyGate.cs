@@ -23,6 +23,8 @@ namespace LoafLock
     //                  went to an admin window).
     //                - a press that reached LoafLock late (LateMs, or Unpair): Windows may have
     //                  given up waiting for the hook and passed it on.
+    //   volume:      with PassVolume, Mute and Volume Down / Up go straight through, as if
+    //                LoafLock weren't there.
     //   the word:    fresh presses of its letters, in order, unlock. Repeats of a held key and
     //                Shift, Ctrl, Alt, Windows and Caps Lock don't count; any other key starts
     //                the word over. Mouse buttons leave it alone.
@@ -39,6 +41,9 @@ namespace LoafLock
         public int HeldGraceMs = 600;  // the longest a held key waits before repeating, and a little more
         public int RepeatSplitMs;      // between a held key's repeat gap and its first wait; 0: can't tell them apart
         public const int LateMs = 150;
+
+        // Mute, Volume Down and Volume Up go through while locked (an option, set at each lock)
+        public bool PassVolume;
 
         readonly bool[] down = new bool[256];      // down right now, as far as the gate has seen
         readonly bool[] dropping = new bool[256];  // its press was dropped: so are its repeats
@@ -107,6 +112,9 @@ namespace LoafLock
         public bool OnKey(int vk, bool pressed, int time, int late = 0)
         {
             if (vk < 0 || vk > 255) return false;
+            // let through: not dropped, not counted, and the word doesn't see them (one held from
+            // before the option was ticked finishes the old way)
+            if (PassVolume && IsVolume(vk) && !dropping[vk]) return false;
             bool repeat = pressed && down[vk];
             int gap = time - seen[vk];
             // "still down", but silent too long (or a mouse button, which never repeats, pressed
@@ -204,6 +212,12 @@ namespace LoafLock
                     return true;
             }
             return false;
+        }
+
+        // Mute, Volume Down, Volume Up (a volume knob sends these too)
+        public static bool IsVolume(int vk)
+        {
+            return vk == 0xAD || vk == 0xAE || vk == 0xAF;
         }
 
         // the mouse buttons' key codes: left, right, (3 is Ctrl+Break), middle, back, forward

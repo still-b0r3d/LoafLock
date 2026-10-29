@@ -17,11 +17,15 @@ namespace LoafLock
         readonly Control marshal = new Control();
         // while locked, picks up the keys the hook blocked (its thread only counts them)
         readonly System.Windows.Forms.Timer poll = new System.Windows.Forms.Timer { Interval = 150 };
+        readonly HotkeyListener hotkey = new HotkeyListener();
         int counted;  // the hook's count when last picked up
         bool asking, forgotten;
 
         public bool IsLocked { get; private set; }
         public bool MouseLocked { get; private set; }  // locked, with the mouse too
+
+        // why the hotkey isn't working (another app has it), or null
+        public string HotkeyProblem { get; private set; }
 
         public event Action Changed;         // locked or unlocked, the word, the counts, or a setting
         public event Action<bool> LockedChanged;  // true: just locked; false: just unlocked
@@ -38,9 +42,27 @@ namespace LoafLock
             hook.Failed += message => Post(delegate { if (Failed != null) Failed(message); });
             hook.Note += line => Post(delegate { Log.Write(line); });  // the hook's thread never writes files
             poll.Tick += delegate { CountBlocked(true); };
+            hotkey.Pressed += delegate { Lock(null, "hotkey"); };
+            ApplyHotkey();
             // the hook gets installed afresh when the PC wakes up or someone signs back in
             SystemEvents.PowerModeChanged += PowerModeChanged;
             SystemEvents.SessionSwitch += SessionSwitched;
+        }
+
+        // takes the hotkey from Windows, or gives it back, as the settings say. False (and
+        // HotkeyProblem says why) when something else already has it.
+        public bool ApplyHotkey()
+        {
+            HotkeyProblem = null;
+            if (!Settings.HotkeyOn)
+            {
+                hotkey.Clear();
+                return true;
+            }
+            if (hotkey.Set(Settings.Hotkey)) return true;
+            HotkeyProblem = Settings.Hotkey + " is already taken, by another app or by Windows. Pick another one.";
+            Log.Write("couldn't take the hotkey " + Settings.Hotkey + ": something else has it");
+            return false;
         }
 
         public int Today { get { return Settings.TodayCount(DateTime.Now); } }
@@ -73,6 +95,7 @@ namespace LoafLock
             if (!Settings.HasWord && !AskForWord(owner)) return;
             Log.Write("lock from the " + from);
             hook.MouseToo = Settings.LockMouse;
+            hook.VolumeThrough = Settings.VolumeThrough;
             hook.Lock();
         }
 
@@ -191,6 +214,7 @@ namespace LoafLock
             SystemEvents.SessionSwitch -= SessionSwitched;
             poll.Stop();
             poll.Dispose();
+            hotkey.Dispose();
             CountBlocked(false);
             Save();
             hook.Dispose();
