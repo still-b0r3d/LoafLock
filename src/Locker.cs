@@ -18,11 +18,15 @@ namespace LoafLock
         // while locked, picks up the keys the hook blocked (its thread only counts them)
         readonly System.Windows.Forms.Timer poll = new System.Windows.Forms.Timer { Interval = 150 };
         readonly HotkeyListener hotkey = new HotkeyListener();
+        // "Lock by itself": looks every few seconds at how long nobody's been at the PC
+        readonly System.Windows.Forms.Timer idleCheck = new System.Windows.Forms.Timer { Interval = 5000 };
+        int idleFrom = Environment.TickCount;  // idle time counts from here at the earliest
         int counted;  // the hook's count when last picked up
         bool asking, forgotten;
 
         public bool IsLocked { get; private set; }
         public bool MouseLocked { get; private set; }  // locked, with the mouse too
+        public string LockedBy { get; private set; }   // what asked for the lock in force: "window", "idle", ...
 
         // why the hotkey isn't working (another app has it), or null
         public string HotkeyProblem { get; private set; }
@@ -44,6 +48,11 @@ namespace LoafLock
             poll.Tick += delegate { CountBlocked(true); };
             hotkey.Pressed += delegate { Lock(null, "hotkey"); };
             ApplyHotkey();
+            idleCheck.Tick += delegate
+            {
+                if (Settings.IdleLock && !IsLocked) CheckIdle(Idle.IdleMs(), Environment.TickCount - idleFrom, Idle.GameFullscreen());
+            };
+            idleCheck.Start();
             // the hook gets installed afresh when the PC wakes up or someone signs back in
             SystemEvents.PowerModeChanged += PowerModeChanged;
             SystemEvents.SessionSwitch += SessionSwitched;
@@ -85,6 +94,13 @@ namespace LoafLock
         // from: where it was asked for, for the log ("window", "command line")
         public void Lock(IWin32Window owner, string from)
         {
+            Lock(owner, from, true);
+        }
+
+        // mouse: the mouse locks too, if Options says so (an idle lock never locks it, so
+        // whoever comes back can click Unlock)
+        void Lock(IWin32Window owner, string from, bool mouse)
+        {
             if (IsLocked) return;
             if (asking)
             {
@@ -94,9 +110,26 @@ namespace LoafLock
             }
             if (!Settings.HasWord && !AskForWord(owner)) return;
             Log.Write("lock from the " + from);
-            hook.MouseToo = Settings.LockMouse;
+            LockedBy = from;
+            hook.MouseToo = mouse && Settings.LockMouse;
             hook.VolumeThrough = Settings.VolumeThrough;
             hook.Lock();
+        }
+
+        // "Lock by itself", every few seconds: idleMs from Windows, sinceMs since idleFrom
+        internal void CheckIdle(long idleMs, long sinceMs, bool game)
+        {
+            if (!Settings.IdleLock || IsLocked || asking || !Settings.HasWord) return;
+            if (!Idle.Due(Settings.IdleMinutes, idleMs, sinceMs, game)) return;
+            idleFrom = Environment.TickCount;  // if the lock fails, the next try is a while off
+            Lock(null, "idle", false);
+        }
+
+        // idle time starts over: at an unlock (typing the unlock word doesn't count as using the
+        // keyboard for Windows), a wake-up, a sign-in, and when the option is turned on
+        public void RestartIdle()
+        {
+            idleFrom = Environment.TickCount;
         }
 
         // always goes to the hook, even if the lock it undoes hasn't been reported yet ("lock"
@@ -147,6 +180,7 @@ namespace LoafLock
                 CountBlocked(true);
                 poll.Stop();
                 Save();
+                RestartIdle();
             }
             if (LockedChanged != null) LockedChanged(locked);
             if (Changed != null) Changed();
@@ -188,12 +222,18 @@ namespace LoafLock
 
         void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
         {
-            if (e.Mode == PowerModes.Resume) hook.Rehook();
+            if (e.Mode != PowerModes.Resume) return;
+            hook.Rehook();
+            Post(RestartIdle);
         }
 
         void SessionSwitched(object sender, SessionSwitchEventArgs e)
         {
-            if (e.Reason == SessionSwitchReason.SessionUnlock || e.Reason == SessionSwitchReason.ConsoleConnect) hook.Rehook();
+            if (e.Reason == SessionSwitchReason.SessionUnlock || e.Reason == SessionSwitchReason.ConsoleConnect)
+            {
+                hook.Rehook();
+                Post(RestartIdle);
+            }
             // the way out with the mouse locked too: Ctrl+Alt+Del, Lock, sign back in. The
             // mouse works again (and can click Unlock); the keyboard stays locked.
             if (e.Reason == SessionSwitchReason.SessionLock) Post(LetGoOfTheMouse);
@@ -214,6 +254,8 @@ namespace LoafLock
             SystemEvents.SessionSwitch -= SessionSwitched;
             poll.Stop();
             poll.Dispose();
+            idleCheck.Stop();
+            idleCheck.Dispose();
             hotkey.Dispose();
             CountBlocked(false);
             Save();

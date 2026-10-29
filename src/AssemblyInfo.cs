@@ -5,9 +5,9 @@ using System.Reflection;
 [assembly: AssemblyCompany("b0r3d.org")]
 [assembly: AssemblyProduct("LoafLock")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 b0r3d.org")]
-[assembly: AssemblyVersion("0.5.0.0")]
-[assembly: AssemblyFileVersion("0.5.0.0")]
-// "0.5+abc1234": the version, then the commit it was built from (build.cmd writes BuildInfo.cs)
+[assembly: AssemblyVersion("0.6.0.0")]
+[assembly: AssemblyFileVersion("0.6.0.0")]
+// "0.6+abc1234": the version, then the commit it was built from (build.cmd writes BuildInfo.cs)
 [assembly: AssemblyInformationalVersion(LoafLock.Program.Version + "+" + LoafLock.BuildInfo.Commit)]
 
 // the compiler that comes with Windows leaves this out, and without it .NET runs the exe in its

@@ -72,7 +72,8 @@ namespace LoafLock.Tests
             Run("hotkey: read, written and checked; the picker takes only good ones", HotkeyText);
             Run("gate: with the option, the volume keys go straight through", GateVolumeThrough);
             Run("hotkey: pressing it locks; a taken one says so", HotkeyLocks);
-            Run("options: the hotkey and the volume keys; a taken hotkey puts the old one back", OptionsHotkeyAndVolume);
+            Run("idle lock: after the minutes, not in a game, never the mouse, counted from the last unlock", IdleLocks);
+            Run("options: the hotkey, the volume keys and the idle lock; a taken hotkey puts the old one back", OptionsHotkeyAndVolume);
             Run("look: windows turn dark and light again", Looks);
             Run("remove my settings: the folder and the sign-in entry go", RemoveSettingsForgetsAll);
 

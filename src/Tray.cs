@@ -67,6 +67,8 @@ namespace LoafLock
             {
                 if (!settings.NoteOnLock) return;
                 if (!nowLocked) popup.Nudge("Keyboard unlocked", settings.PawsBlocked + " today: " + locker.Today.ToString("N0"), false);
+                else if (locker.LockedBy == "idle")
+                    popup.Nudge("Keyboard locked by itself", "Nobody used the keyboard or mouse for " + settings.IdleMinutes + " minutes. Type your unlock word to get it back.", true);
                 else if (locker.MouseLocked) popup.Nudge("Keyboard and mouse locked", "Type your unlock word to get them back.", true);
                 else popup.Nudge("Keyboard locked", "Type your unlock word to get it back.", true);
             };

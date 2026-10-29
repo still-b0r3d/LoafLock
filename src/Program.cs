@@ -16,9 +16,9 @@ namespace LoafLock
 {
     static class Program
     {
-        public const string Version = "0.5";
+        public const string Version = "0.6";
 
-        // "LoafLock v0.5 · Build: abc1234" ("dev" for a build made off GitHub)
+        // "LoafLock v0.6 · Build: abc1234" ("dev" for a build made off GitHub)
         public static string VersionText { get { return "LoafLock v" + Version + " · Build: " + BuildInfo.Commit; } }
 
         [DllImport("kernel32.dll")]

@@ -233,10 +233,20 @@ namespace LoafLock.Tests
         // lets the window thread run (posted calls, timers) until done, or 3 seconds
         static void Pump(Func<bool> done, string what)
         {
+            Pump(done, what, false);
+        }
+
+        // never: what's waited for mustn't happen, so wait half a second and say nothing
+        static void Pump(Func<bool> done, string what, bool never)
+        {
             var waited = Stopwatch.StartNew();
             while (!done())
             {
-                if (waited.ElapsedMilliseconds > 3000) throw new Exception(what);
+                if (waited.ElapsedMilliseconds > (never ? 500 : 3000))
+                {
+                    if (never) return;
+                    throw new Exception(what);
+                }
                 Application.DoEvents();
                 Thread.Sleep(10);
             }

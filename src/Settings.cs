@@ -30,6 +30,10 @@ namespace LoafLock
 
         public bool VolumeThrough;  // Mute, Volume Down and Volume Up still work while locked
 
+        // lock by itself after IdleMinutes with nobody at the keyboard or mouse
+        public bool IdleLock;
+        public int IdleMinutes = Idle.DefaultMinutes;
+
         // "Paws blocked by Biscuit": the cat's name, or "" for none
         public string CatName = "";
         public const int MaxNameLength = 24;
@@ -129,6 +133,8 @@ namespace LoafLock
                         else Log.Write("settings: the hotkey in settings.ini isn't one LoafLock takes, so it was ignored");
                         break;
                     case "volume_through": s.VolumeThrough = !IsNo(value); break;
+                    case "idle_lock": s.IdleLock = !IsNo(value); break;
+                    case "idle_minutes": if (int.TryParse(value, out number) && Array.IndexOf(Idle.Choices, number) >= 0) s.IdleMinutes = number; break;
                     case "cat_name": s.CatName = CleanName(value); break;
                     case "look":
                         switch (value.ToLowerInvariant())
@@ -161,6 +167,8 @@ namespace LoafLock
                 "hotkey_on=" + (HotkeyOn ? "yes" : "no") + "\r\n" +
                 "hotkey=" + Hotkey + "\r\n" +
                 "volume_through=" + (VolumeThrough ? "yes" : "no") + "\r\n" +
+                "idle_lock=" + (IdleLock ? "yes" : "no") + "\r\n" +
+                "idle_minutes=" + IdleMinutes + "\r\n" +
                 "cat_name=" + CatName + "\r\n" +
                 "look=" + Look.ToString().ToLowerInvariant() + "\r\n" +
                 "blocked_total=" + BlockedTotal + "\r\n" +

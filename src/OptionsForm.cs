@@ -13,7 +13,8 @@ namespace LoafLock
         readonly Locker locker;
         readonly FlowLayoutPanel body;
         FlowLayoutPanel column;  // where Heading, Line and Check add to
-        readonly CheckBox hotkeyOn, volume, noteOnLock, noteOnKeys, mouse, minimized, startup;
+        readonly CheckBox hotkeyOn, volume, noteOnLock, noteOnKeys, mouse, idle, minimized, startup;
+        readonly RadioButton[] idleChoices;
         readonly Label hotkeyText, hotkeyProblem;
         readonly LinkLabel changeHotkey;
         readonly TextBox catName;
@@ -75,6 +76,20 @@ namespace LoafLock
             mouse = Check("Lock the mouse too", on => { locker.Settings.LockMouse = on; locker.Save(); });
             Line("From the next lock, the pointer, the buttons and the wheel stop too, so only your unlock word gets things back. " +
                 "If you're stuck: Ctrl+Alt+Del, Lock, then sign back in, and the mouse works again.");
+
+            Heading("Locking by itself");
+            idle = Check("Lock when nobody's used the keyboard or mouse for:", on =>
+            {
+                locker.Settings.IdleLock = on;
+                locker.RestartIdle();
+                locker.Save();
+            });
+            var minutes = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(18, 0, 0, 4) };
+            idleChoices = new RadioButton[Idle.Choices.Length];
+            for (int i = 0; i < Idle.Choices.Length; i++) idleChoices[i] = MinutesChoice(minutes, Idle.Choices[i]);
+            column.Controls.Add(minutes);
+            Line("Minutes. Watching a video without touching anything counts; a fullscreen game doesn't. " +
+                "It locks only the keyboard, so you can click Unlock when you're back.");
 
             // ---- right: notes, the cat, the look, starting ----
             column = Column(columns, new Padding(0));
@@ -150,6 +165,8 @@ namespace LoafLock
         internal CheckBox HotkeyBox { get { return hotkeyOn; } }
         internal CheckBox VolumeBox { get { return volume; } }
         internal string HotkeyProblemText { get { return hotkeyProblem.Text; } }
+        internal CheckBox IdleBox { get { return idle; } }
+        internal RadioButton IdleChoice(int minutes) { return idleChoices[Array.IndexOf(Idle.Choices, minutes)]; }
         internal TextBox CatNameBox { get { return catName; } }
         internal RadioButton LookBox(Look look) { return look == Look.Light ? lookLight : look == Look.Dark ? lookDark : lookWindows; }
 
@@ -165,6 +182,8 @@ namespace LoafLock
             noteOnLock.Checked = s.NoteOnLock;
             noteOnKeys.Checked = s.NoteOnKeys;
             mouse.Checked = s.LockMouse;  // it applies from the next lock
+            idle.Checked = s.IdleLock;
+            for (int i = 0; i < Idle.Choices.Length; i++) idleChoices[i].Checked = Idle.Choices[i] == s.IdleMinutes;
             if (Settings.CleanName(catName.Text) != s.CatName) catName.Text = s.CatName;  // not while it's being typed
             LookBox(s.Look).Checked = true;
             minimized.Checked = s.StartMinimized;
@@ -212,6 +231,20 @@ namespace LoafLock
             if (name == locker.Settings.CatName) return;
             locker.Settings.CatName = name;
             locker.SettingsChanged();
+        }
+
+        RadioButton MinutesChoice(FlowLayoutPanel row, int minutes)
+        {
+            var choice = new RadioButton { Text = minutes.ToString(), AutoSize = true, Margin = new Padding(0, 0, 12, 0) };
+            choice.CheckedChanged += delegate
+            {
+                if (loading || !choice.Checked) return;
+                locker.Settings.IdleMinutes = minutes;
+                locker.RestartIdle();
+                locker.Save();
+            };
+            row.Controls.Add(choice);
+            return choice;
         }
 
         RadioButton LookChoice(FlowLayoutPanel row, string text, Look look)

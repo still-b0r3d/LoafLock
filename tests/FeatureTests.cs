@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Windows.Forms;
 
 namespace LoafLock.Tests
@@ -82,6 +83,40 @@ namespace LoafLock.Tests
             }
         }
 
+        // 0.6: "Lock by itself"
+        static void IdleLocks()
+        {
+            const long Minute = 60000;
+            Check(Idle.Due(10, 10 * Minute, 11 * Minute, false) && !Idle.Due(10, 9 * Minute, 11 * Minute, false), "10 minutes idle isn't the line");
+            Check(!Idle.Due(10, 30 * Minute, 2 * Minute, false), "it counted from before the last unlock (typing the word isn't input for Windows)");
+            Check(!Idle.Due(10, 30 * Minute, 30 * Minute, true), "it locked during a fullscreen game");
+            Check(Idle.IdleMs() >= 0, "Windows' idle time came back below zero");
+
+            var settings = new Settings { UnlockWord = "rukus", IdleLock = true, IdleMinutes = 5, LockMouse = true };
+            var hook = new KeyHook(new KeyGate(), true);
+            using (var locker = new Locker(settings, hook))
+            {
+                locker.CheckIdle(4 * Minute, 4 * Minute, false);
+                locker.CheckIdle(6 * Minute, 6 * Minute, true);
+                Pump(() => hook.Installed, "", true);
+                Check(!locker.IsLocked && !hook.Installed, "it locked before 5 minutes, or during a game");
+                locker.CheckIdle(6 * Minute, 6 * Minute, false);
+                Pump(() => locker.IsLocked, "5 minutes idle didn't lock");
+                Check(locker.LockedBy == "idle" && !locker.MouseLocked && !hook.MouseInstalled, "an idle lock locked the mouse too");
+                locker.Unlock("test");
+                Pump(() => !locker.IsLocked, "it didn't unlock");
+
+                settings.IdleLock = false;
+                locker.CheckIdle(60 * Minute, 60 * Minute, false);
+                Pump(() => hook.Installed, "", true);
+                Check(!locker.IsLocked && !hook.Installed, "it locked by itself with the option off");
+            }
+
+            File.WriteAllText(Settings.FilePath, "idle_lock=yes\r\nidle_minutes=7\r\n");
+            Settings back = Settings.Load();
+            Check(back.IdleLock && back.IdleMinutes == Idle.DefaultMinutes, "a made-up number of minutes was taken");
+        }
+
         static void OptionsHotkeyAndVolume()
         {
             var settings = new Settings { UnlockWord = "rukus", Hotkey = new Hotkey(Keys.F23, Keys.None) };
@@ -92,8 +127,12 @@ namespace LoafLock.Tests
                 options.HotkeyBox.Checked = true;
                 Check(settings.HotkeyOn && locker.HotkeyProblem == null, "ticking the hotkey didn't take it (" + locker.HotkeyProblem + ")");
                 options.VolumeBox.Checked = true;
+                Check(!options.IdleBox.Checked && options.IdleChoice(Idle.DefaultMinutes).Checked, "the idle lock doesn't show its defaults");
+                options.IdleBox.Checked = true;
+                options.IdleChoice(30).Checked = true;
                 Settings saved = Settings.Load();
                 Check(saved.HotkeyOn && saved.Hotkey.ToString() == "F23" && saved.VolumeThrough, "the hotkey or the volume option wasn't saved");
+                Check(saved.IdleLock && saved.IdleMinutes == 30, "the idle lock wasn't saved");
 
                 using (var other = new HotkeyListener())
                 {
