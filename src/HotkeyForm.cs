@@ -45,7 +45,7 @@ namespace LoafLock
             body.Controls.Add(new Label { Text = "Press the keys for the hotkey", AutoSize = true, Font = new Font("Segoe UI Semibold", 12F), Margin = new Padding(0, 0, 0, 8) });
             body.Controls.Add(new Label
             {
-                Text = "Ctrl with a key, like Ctrl+Alt+L, or Pause, Scroll Lock or F13 to F24 on their own. It only locks the keyboard.",
+                Text = "Ctrl+Shift with a key, like Ctrl+Shift+L, or Pause, Scroll Lock or F13 to F24 on their own. It only locks the keyboard.",
                 AutoSize = true, MaximumSize = new Size(340, 0), Tag = Theme.DimTag, Margin = new Padding(0, 0, 0, 10)
             });
             combo = new Label { Text = current.ToString(), AutoSize = true, Font = new Font("Segoe UI Semibold", 16F), Margin = new Padding(0, 0, 0, 4) };

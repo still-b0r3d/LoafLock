@@ -19,18 +19,28 @@ namespace LoafLock
             Modifiers = modifiers & (Keys.Control | Keys.Alt | Keys.Shift);
         }
 
-        public static readonly Hotkey Default = new Hotkey(Keys.L, Keys.Control | Keys.Alt);
+        public static readonly Hotkey Default = new Hotkey(Keys.L, Keys.Control | Keys.Shift);
 
-        // what's wrong with it as a hotkey, or null if it'll do. Ctrl has to be in it (or it's
-        // a key nothing else uses): Alt + a key would leave a lone Alt tap for the app when
-        // it's let go after the lock, which opens its menu bar, and Shift + a key is typing.
+        // What's wrong with it as a hotkey, or null if it'll do:
+        // - a key nothing else uses, on its own (Pause, Scroll Lock, F13 to F24), or
+        // - Ctrl+Shift with a key: Ctrl with one key is a shortcut apps use (Ctrl+C), Alt or
+        //   Shift with one key gets in the way of typing and menus (after the lock, Alt's
+        //   release reaches the app as a lone Alt tap, which opens its menu bar), or
+        // - Ctrl+Alt with an F key: with a letter it's AltGr on many keyboards, which types a
+        //   character (Ctrl+Alt+L is "ł" in Polish).
+        // Never Space or Enter: Windows takes the hotkey's press, but its release still reaches
+        // the app, and a lone Space release plays or pauses YouTube.
         public string Problem
         {
             get
             {
-                if (Key == Keys.None || IsModifier(Key)) return "Press a key along with Ctrl, Alt or Shift.";
-                if (Modifiers == Keys.None && !Alone(Key)) return "On its own, only Pause, Scroll Lock or F13 to F24. Add Ctrl to anything else.";
-                if (Modifiers != Keys.None && (Modifiers & Keys.Control) == 0) return "Hold Ctrl too: Alt or Shift with a key alone gets in the way of typing and menus.";
+                bool ctrl = (Modifiers & Keys.Control) != 0, alt = (Modifiers & Keys.Alt) != 0, shift = (Modifiers & Keys.Shift) != 0;
+                if (Key == Keys.None || IsModifier(Key)) return "Press a key along with Ctrl and Shift.";
+                if (Key == Keys.Space || Key == Keys.Return) return "Not Space or Enter: when you let go, the video would still get it.";
+                if (Modifiers == Keys.None) return Alone(Key) ? null : "On its own, only Pause, Scroll Lock or F13 to F24. Hold Ctrl and Shift with anything else.";
+                if (!ctrl) return "Hold Ctrl and Shift with the key: Alt or Shift alone gets in the way of typing and menus.";
+                if (alt) return Key >= Keys.F1 && Key <= Keys.F24 ? null : "Ctrl+Alt with a letter types a character on some keyboards. Use Ctrl+Shift, or Ctrl+Alt with an F key.";
+                if (!shift) return "Ctrl with one key is a shortcut apps use (Ctrl+C copies). Hold Shift too.";
                 return null;
             }
         }

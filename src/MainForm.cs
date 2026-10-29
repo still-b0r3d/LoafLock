@@ -13,6 +13,8 @@ namespace LoafLock
     class MainForm : Form
     {
         public const string MakerUrl = "https://b0r3d.org";
+        // "Check for updates…" only opens this page: LoafLock has no internet code at all
+        public const string ReleasesUrl = "https://github.com/still-b0r3d/LoafLock/releases";
 
         const int ColumnWidth = 340;  // the column everything lines up in
 
@@ -56,6 +58,7 @@ namespace LoafLock
             Item(help, "If the keyboard's &stuck…", delegate { Stuck(); });
             Item(help, "Open the &log", delegate { OpenLog(); });
             help.DropDownItems.Add(new ToolStripSeparator());
+            Item(help, "Check for &updates…", delegate { Open(ReleasesUrl); });
             Item(help, "&About LoafLock", delegate { About(); });
             Item(help, "Visit &b0r3d.org", delegate { Open(MakerUrl); });
 
@@ -194,7 +197,8 @@ namespace LoafLock
             MessageBox.Show(this,
                 Program.VersionText + "\n\n" +
                 "Locks the keyboard so a cat lying on it can't type. The mouse keeps working, unless you lock it too (in Options). It never connects to the internet and never keeps what you type.\n\n" +
-                "Made by b0r3d.org.",
+                "Newer versions: Help → Check for updates… opens the downloads page.\n\n" +
+                "Made by b0r3d.org. MIT License with the Commons Clause: free to use, change and share, not to sell.",
                 "About LoafLock", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 

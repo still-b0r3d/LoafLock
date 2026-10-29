@@ -70,7 +70,7 @@ namespace LoafLock
 
             Heading("While locked");
             volume = Check("Let the volume keys through", on => { locker.Settings.VolumeThrough = on; locker.Save(); });
-            Line("Mute, volume up and down, and a volume knob still work. Play/pause stays locked, or a paw on it would pause the video.");
+            Line("From the next lock, mute, volume up and down, and a volume knob still work. Play/pause stays locked, or a paw on it would pause the video.");
 
             Heading("The mouse");
             mouse = Check("Lock the mouse too", on => { locker.Settings.LockMouse = on; locker.Save(); });
@@ -88,7 +88,7 @@ namespace LoafLock
             idleChoices = new RadioButton[Idle.Choices.Length];
             for (int i = 0; i < Idle.Choices.Length; i++) idleChoices[i] = MinutesChoice(minutes, Idle.Choices[i]);
             column.Controls.Add(minutes);
-            Line("Minutes. Watching a video without touching anything counts; a fullscreen game doesn't. " +
+            Line("Minutes. Watching a video without touching anything counts; a game that has the whole screen to itself doesn't (one in a borderless window still does). " +
                 "It locks only the keyboard, so you can click Unlock when you're back.");
 
             // ---- right: notes, the cat, the look, starting ----
@@ -218,10 +218,20 @@ namespace LoafLock
 
         void PickHotkey()
         {
-            using (var pick = new HotkeyForm(locker.Settings.Hotkey))
+            locker.HoldHotkey();  // or pressing the current one in the picker would lock
+            bool picked = false;
+            try
             {
-                if (pick.ShowDialog(this) != DialogResult.OK) return;
-                HotkeyChanged(true, pick.Picked);  // picking one turns it on
+                using (var pick = new HotkeyForm(locker.Settings.Hotkey))
+                {
+                    if (pick.ShowDialog(this) != DialogResult.OK) return;
+                    picked = true;
+                    HotkeyChanged(true, pick.Picked);  // picking one turns it on
+                }
+            }
+            finally
+            {
+                if (!picked) locker.ApplyHotkey();  // the old one back
             }
         }
 

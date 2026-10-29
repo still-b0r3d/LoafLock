@@ -74,15 +74,15 @@ namespace LoafLock
             };
             locker.KeysBlocked += delegate
             {
-                if (settings.NoteOnKeys)
-                    popup.Nudge(locker.MouseLocked ? "Keyboard and mouse are locked" : "Keyboard's locked",
-                        "Type your unlock word to get " + (locker.MouseLocked ? "them" : "it") + " back.\n" + settings.PawsBlocked + " today: " + locker.Today.ToString("N0"), true);
+                if (!settings.NoteOnKeys) return;
+                if (locker.Loafing && settings.NoteOnLock) LoafNote();  // the loaf's note stays up while it goes on
+                else popup.Nudge(locker.MouseLocked ? "Keyboard and mouse are locked" : "Keyboard's locked",
+                    "Type your unlock word to get " + (locker.MouseLocked ? "them" : "it") + " back.\n" + settings.PawsBlocked + " today: " + locker.Today.ToString("N0"), true);
             };
             // a long loaf: Rukus nods off in the note (with the lock and unlock notes)
             locker.LongLoaf += delegate
             {
-                if (settings.NoteOnLock)
-                    popup.Nudge((settings.CatName.Length > 0 ? settings.CatName : "A cat") + " is loafing", "Nothing gets typed: the keyboard's locked.", true, true);
+                if (settings.NoteOnLock) LoafNote();
             };
             locker.Failed += message => MessageBox.Show(message, "LoafLock", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             // LoafLock.exe opened again: show this copy's window; or "LoafLock.exe lock" / "unlock"
@@ -121,6 +121,12 @@ namespace LoafLock
         void Restyle()
         {
             Theme.Apply(menu);
+        }
+
+        void LoafNote()
+        {
+            Settings s = locker.Settings;
+            popup.Nudge((s.CatName.Length > 0 ? s.CatName : "A cat") + " is loafing", "Nothing gets typed: the keyboard's locked.", true, true);
         }
 
         // the window opens when LoafLock starts, unless it started with Windows or minimized; the

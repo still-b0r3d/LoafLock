@@ -21,6 +21,8 @@ namespace LoafLock
         // "Lock by itself": looks every few seconds at how long nobody's been at the PC
         readonly System.Windows.Forms.Timer idleCheck = new System.Windows.Forms.Timer { Interval = 5000 };
         int idleFrom = Environment.TickCount;  // idle time counts from here at the earliest
+        int lastIdleCheck = Environment.TickCount;
+        bool away;  // Windows is locked, or this sign-in is switched away from: no idle lock then
         int counted;  // the hook's count when last picked up
         bool asking, forgotten;
 
@@ -39,6 +41,9 @@ namespace LoafLock
         readonly LoafWatch loaf = new LoafWatch();
         public event Action<string> Failed;  // the keyboard couldn't be locked; says why
 
+        // a long loaf has been told and is still going: notes on blocked keys keep the loaf's
+        public bool Loafing { get { return loaf.Told; } }
+
         public Locker(Settings settings, KeyHook hook)
         {
             Settings = settings;
@@ -46,7 +51,13 @@ namespace LoafLock
             IntPtr made = marshal.Handle;  // its window, on this thread, now
             hook.Word = settings.UnlockWord;
             hook.LockChanged += locked => Post(delegate { SetLocked(locked); });
-            hook.Failed += message => Post(delegate { if (Failed != null) Failed(message); });
+            hook.Failed += message => Post(delegate
+            {
+                // nobody's there to read a box for a lock that came by itself, and one every few
+                // minutes would pile up (and knock a video out of fullscreen): the log has it
+                if (LockedBy == "idle") return;
+                if (Failed != null) Failed(message);
+            });
             hook.Note += line => Post(delegate { Log.Write(line); });  // the hook's thread never writes files
             poll.Tick += delegate
             {
@@ -57,7 +68,12 @@ namespace LoafLock
             ApplyHotkey();
             idleCheck.Tick += delegate
             {
-                if (Settings.IdleLock && !IsLocked) CheckIdle(Idle.IdleMs(), Environment.TickCount - idleFrom, Idle.GameFullscreen());
+                // a check far later than 5 s after the last one: the PC slept (Windows' clock
+                // runs on through sleep), and the wake-up may not have been reported yet
+                int now = Environment.TickCount;
+                if (now - lastIdleCheck > 30000) RestartIdle();
+                lastIdleCheck = now;
+                if (Settings.IdleLock && !IsLocked && !away) CheckIdle(Idle.IdleMs(), now - idleFrom, Idle.GameFullscreen());
             };
             idleCheck.Start();
             // the hook gets installed afresh when the PC wakes up or someone signs back in
@@ -79,6 +95,13 @@ namespace LoafLock
             HotkeyProblem = Settings.Hotkey + " is already taken, by another app or by Windows. Pick another one.";
             Log.Write("couldn't take the hotkey " + Settings.Hotkey + ": something else has it");
             return false;
+        }
+
+        // while a new hotkey is being picked: Windows would take the current one before the
+        // picker saw it, so it's let go until ApplyHotkey
+        public void HoldHotkey()
+        {
+            hotkey.Clear();
         }
 
         public int Today { get { return Settings.TodayCount(DateTime.Now); } }
@@ -126,7 +149,7 @@ namespace LoafLock
         // "Lock by itself", every few seconds: idleMs from Windows, sinceMs since idleFrom
         internal void CheckIdle(long idleMs, long sinceMs, bool game)
         {
-            if (!Settings.IdleLock || IsLocked || asking || !Settings.HasWord) return;
+            if (!Settings.IdleLock || IsLocked || asking || away || !Settings.HasWord) return;
             if (!Idle.Due(Settings.IdleMinutes, idleMs, sinceMs, game)) return;
             idleFrom = Environment.TickCount;  // if the lock fails, the next try is a while off
             Lock(null, "idle", false);
@@ -242,11 +265,23 @@ namespace LoafLock
             if (e.Reason == SessionSwitchReason.SessionUnlock || e.Reason == SessionSwitchReason.ConsoleConnect)
             {
                 hook.Rehook();
-                Post(RestartIdle);
+                Post(delegate { SetAway(false); });
             }
+            // the lock screen, or another sign-in on this PC: the idle lock waits for the return
+            // (else you'd sign back in to a keyboard that locked itself while you were away)
+            if (e.Reason == SessionSwitchReason.SessionLock || e.Reason == SessionSwitchReason.ConsoleDisconnect || e.Reason == SessionSwitchReason.RemoteDisconnect)
+                Post(delegate { SetAway(true); });
+            if (e.Reason == SessionSwitchReason.RemoteConnect) Post(delegate { SetAway(false); });
             // the way out with the mouse locked too: Ctrl+Alt+Del, Lock, sign back in. The
             // mouse works again (and can click Unlock); the keyboard stays locked.
             if (e.Reason == SessionSwitchReason.SessionLock) Post(LetGoOfTheMouse);
+        }
+
+        // Windows locked or switched away (true), or back (false: idle time starts over)
+        internal void SetAway(bool isAway)
+        {
+            away = isAway;
+            if (!isAway) RestartIdle();
         }
 
         internal void LetGoOfTheMouse()

@@ -11,11 +11,11 @@ namespace LoafLock.Tests
         static void HotkeyText()
         {
             Hotkey h;
-            Check(Hotkey.Default.ToString() == "Ctrl+Alt+L" && Hotkey.Default.Problem == null, "the default hotkey is " + Hotkey.Default);
-            Check(Hotkey.TryParse("ctrl+alt+L", out h) && h.Key == Keys.L && h.Modifiers == (Keys.Control | Keys.Alt), "ctrl+alt+L wasn't read");
+            Check(Hotkey.Default.ToString() == "Ctrl+Shift+L" && Hotkey.Default.Problem == null, "the default hotkey is " + Hotkey.Default);
+            Check(Hotkey.TryParse("ctrl+shift+L", out h) && h.Key == Keys.L && h.Modifiers == (Keys.Control | Keys.Shift), "ctrl+shift+L wasn't read");
             Check(Hotkey.TryParse(" Ctrl + Shift + 5 ", out h) && h.Key == Keys.D5 && h.ToString() == "Ctrl+Shift+5", "Ctrl+Shift+5 came back as " + h);
             Check(Hotkey.TryParse("Pause", out h) && Hotkey.TryParse("ScrollLock", out h) && Hotkey.TryParse("F24", out h), "a lone Pause, ScrollLock or F24 was turned down");
-            Check(Hotkey.TryParse(new Hotkey(Keys.Next, Keys.Control).ToString(), out h) && h.Key == Keys.Next, "Ctrl+PageDown doesn't come back");
+            Check(Hotkey.TryParse(new Hotkey(Keys.Next, Keys.Control | Keys.Shift).ToString(), out h) && h.Key == Keys.Next, "Ctrl+Shift+PageDown doesn't come back");
             Check(!Hotkey.TryParse("L", out h), "a lone L was taken (it's typing)");
             Check(!Hotkey.TryParse("Alt+L", out h), "Alt+L was taken (a lone Alt tap after the lock opens menus)");
             Check(!Hotkey.TryParse("Shift+L", out h), "Shift+L was taken (it's typing)");
@@ -24,12 +24,12 @@ namespace LoafLock.Tests
 
             using (var pick = new HotkeyForm(Hotkey.Default))
             {
-                pick.Press(Keys.K | Keys.Control | Keys.Alt);
-                Check(pick.Picked.ToString() == "Ctrl+Alt+K", "pressing Ctrl+Alt+K picked " + pick.Picked);
+                pick.Press(Keys.K | Keys.Control | Keys.Shift);
+                Check(pick.Picked.ToString() == "Ctrl+Shift+K", "pressing Ctrl+Shift+K picked " + pick.Picked);
                 pick.Press(Keys.J | Keys.Alt);
-                Check(pick.Picked.ToString() == "Ctrl+Alt+K", "Alt+J replaced a good pick");
+                Check(pick.Picked.ToString() == "Ctrl+Shift+K", "Alt+J replaced a good pick");
                 pick.Press(Keys.ControlKey | Keys.Control);
-                Check(pick.Picked.ToString() == "Ctrl+Alt+K", "Ctrl on its own replaced the pick");
+                Check(pick.Picked.ToString() == "Ctrl+Shift+K", "Ctrl on its own replaced the pick");
             }
         }
 
@@ -71,6 +71,12 @@ namespace LoafLock.Tests
                 locker.Unlock("test");
                 Pump(() => !locker.IsLocked, "it didn't unlock");
 
+                // the picker lets go of it while it's open, or pressing it there would lock
+                locker.HoldHotkey();
+                using (var other = new HotkeyListener())
+                    Check(other.Set(new Hotkey(Keys.F24, Keys.None)), "holding the hotkey for the picker didn't let it go");
+                Check(locker.ApplyHotkey(), "the hotkey didn't come back after the picker");
+
                 settings.HotkeyOn = false;
                 Check(locker.ApplyHotkey() && locker.HotkeyProblem == null, "turning the hotkey off didn't let it go");
                 using (var other = new HotkeyListener())
@@ -106,6 +112,13 @@ namespace LoafLock.Tests
                 locker.Unlock("test");
                 Pump(() => !locker.IsLocked, "it didn't unlock");
 
+                // Windows locked (or switched away): no idle lock behind the lock screen
+                locker.SetAway(true);
+                locker.CheckIdle(60 * Minute, 60 * Minute, false);
+                Pump(() => hook.Installed, "", true);
+                Check(!locker.IsLocked && !hook.Installed, "it locked by itself behind Windows' lock screen");
+                locker.SetAway(false);
+
                 settings.IdleLock = false;
                 locker.CheckIdle(60 * Minute, 60 * Minute, false);
                 Pump(() => hook.Installed, "", true);
@@ -131,7 +144,9 @@ namespace LoafLock.Tests
             Check(told == 0, "paws with breaks were taken for a loaf");
 
             for (int i = 0; i < 220; i++, t += 150) if (w.Tick(t, true)) told++;
+            Check(w.Told, "a loaf that was told doesn't say it's still going");
             for (int i = 0; i < 30; i++, t += 150) w.Tick(t, false);  // the cat gets up
+            Check(!w.Told, "a loaf still says it's going after the cat got up");
             for (int i = 0; i < 220; i++, t += 150) if (w.Tick(t, true)) told++;  // and lies down again
             Check(told == 2, "two loaves were told " + told + " times, expected twice");
         }

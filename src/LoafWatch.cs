@@ -32,6 +32,9 @@ namespace LoafLock
             return true;
         }
 
+        // a loaf long enough to have been told, still going
+        public bool Told { get { return loafing && told; } }
+
         public void Reset()
         {
             loafing = told = false;
