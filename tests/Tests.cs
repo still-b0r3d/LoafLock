@@ -31,6 +31,7 @@ namespace LoafLock.Tests
             Application.ThreadException += (s, e) => { Console.WriteLine("FAIL  a window threw: " + e.Exception); Environment.Exit(3); };
             AppDomain.CurrentDomain.UnhandledException += (s, e) => { Console.WriteLine("FAIL  crashed: " + e.ExceptionObject); Environment.Exit(3); };
             if (args.Length == 2 && args[0] == "--shots") return TakeShots(args[1]);
+            if (args.Length == 2 && args[0] == "--screenshots") return TakeScreenshots(args[1]);
 
             string home = Path.Combine(Path.GetTempPath(), "LoafLockTests-" + Guid.NewGuid().ToString("N"));
             Settings.Dir = home;
