@@ -3,6 +3,18 @@
 Each version's exe says its build (the commit it was made from) in the window, in
 Rukus's menu and under Help → About.
 
+## 0.81
+
+- **Cat detection** (experimental, off to start with), in Options under "Your cat". It locks
+  the keyboard when several keys go down at once, the way a paw does: 4 together, 3 landing
+  at the same moment, or 3 put down within a second and held for a second and a half. It
+  can't spot a cat on a keyboard that senses only 2 keys at once, and holding three keys
+  together in a game could set it off. It locks only the keyboard, and the log says what it
+  saw (how many keys, never which). While it's on, LoafLock watches the keyboard while
+  unlocked too.
+- **Options…** is in the window's LoafLock menu now, so the menu bar is just LoafLock and
+  Help. Look moved to the left side of the Options window to make room.
+
 ## 0.8
 
 - Help → **Check for updates…** opens the downloads page. LoafLock itself never goes on

@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 namespace LoafLock
 {
     // "Lock by itself": how long nobody's used the keyboard or the mouse, from Windows' own
-    // count (what screen savers go by), so an unlocked LoafLock still watches no keys. The
+    // count (what screen savers go by), so it needs no keys watched. The
     // mouse counts too: telling typing apart from the mouse would need the hook on all the
     // time. A game controller doesn't count for Windows, so games in exclusive fullscreen are
     // left alone; a fullscreen video in a browser isn't one of those, and does get locked.

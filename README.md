@@ -4,7 +4,7 @@ Keeps a cat lying on the keyboard from typing. LoafLock sits in the Windows task
 as Rukus. Lock the keyboard from there, and key presses go nowhere: the video keeps
 playing and nothing gets typed. The mouse keeps working (or locks too, if you like).
 
-Version 0.8, for Windows 10 and 11. Made by [b0r3d.org](https://b0r3d.org).
+Version 0.81, for Windows 10 and 11. Made by [b0r3d.org](https://b0r3d.org).
 
 ![The LoafLock window with the keyboard locked: Rukus wears a gold padlock, and the button says Unlock keyboard](docs/images/1-window-locked.png)
 
@@ -39,9 +39,9 @@ to see him):
 ![Rukus's menu: Open LoafLock, Lock keyboard, the paws blocked today and all time, Options, Quit LoafLock](docs/images/4-menu.png)
 
 Left-click Rukus any time for the window: the paws blocked today and all time, and your
-unlock word. **Options** (in its menu bar, or Rukus's menu) has:
+unlock word. **Options…** (in the window's LoafLock menu, or Rukus's menu) has:
 
-![The Options window: the hotkey, the volume keys, the mouse, locking by itself, the notes, your cat's name, the look and starting](docs/images/5-options.png)
+![The Options window: the hotkey, the volume keys, the mouse, locking by itself and the look; the notes, your cat's name, cat detection and starting](docs/images/5-options.png)
 
 - **a hotkey** that locks (off to start with; Ctrl+Shift+L unless you pick another). It only
   locks: it can't unlock, so a cat can't either;
@@ -55,6 +55,15 @@ unlock word. **Options** (in its menu bar, or Rukus's menu) has:
   on the keyboard for half a minute, Rukus nods off in one: "Biscuit is loafing";\
   ![Rukus nodding off in the note: Biscuit is loafing. Nothing gets typed: the keyboard's locked.](docs/images/6-note-loafing.png)
 - **your cat's name**, for "Paws blocked by Biscuit";
+- **Cat detection** (experimental, off to start with): it locks when several keys go down
+  at once, the way a paw does: 4 together, 3 landing at the same moment, or 3 put down
+  within a second and held for a second and a half. Shift, Ctrl, Alt and the Windows key
+  don't count, so shortcuts never set it off. Keyboards differ in how many keys they can
+  sense at once: it can't spot a cat on one that senses only 2 (some cheap keyboards and
+  laptops). Holding three keys together in a game (moving, jumping and strafing at once,
+  say) could set it off, unless the game has the whole screen to itself. It locks only the
+  keyboard, the keys that set it off still get through, and the log says what it saw.
+  While it's on, LoafLock watches the keyboard while unlocked too (see below);
 - **Look**: like Windows, light or dark;
 - **Start minimized**, and **Start LoafLock when you sign in to Windows**.
 
@@ -88,7 +97,9 @@ All of this is in the window's **Help** menu too.
 - It never connects to the internet: there's no network code in it at all.
 - It never keeps what you type. The log (Help → Open the log) says when it locked and
   unlocked, never which keys.
-- While unlocked, it doesn't look at the keyboard or the mouse at all.
+- While unlocked, it doesn't look at the keyboard or the mouse at all, unless you turn on
+  cat detection: then it watches how many keys are down at once and for how long, and
+  forgets each one as it comes up.
 - No admin rights, no services, no drivers. It writes only its own settings folder
   (`%APPDATA%\LoafLock`) and, if you tick it, one start-with-Windows entry.
 

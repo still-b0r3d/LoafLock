@@ -79,6 +79,18 @@ namespace LoafLock
             Invalidate();
         }
 
+        // whether a note says this little enough to fit, laid out as OnPaint lays it out (the tests)
+        internal bool Fits(string heading, string line)
+        {
+            using (Graphics g = CreateGraphics())
+            {
+                int x = pad * 2 + rukus.Width, width = ClientSize.Width - x - pad;
+                Size head = TextRenderer.MeasureText(g, heading, titleFont);
+                Size body = TextRenderer.MeasureText(g, line, textFont, new Size(width, ClientSize.Height), TextFormatFlags.WordBreak);
+                return head.Width <= width && body.Width <= width && head.Height + body.Height <= ClientSize.Height;
+            }
+        }
+
         // show the note, or keep it up a while longer
         public void Nudge(string heading, string line, bool locked, bool sleepy = false)
         {

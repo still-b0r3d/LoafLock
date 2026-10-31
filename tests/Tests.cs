@@ -68,6 +68,7 @@ namespace LoafLock.Tests
             Run("pop-up: shows without taking focus, lets clicks through, fades", PopupNeverTakesFocus);
             Run("start: the window opens unless minimized or with Windows; always on the first run", WindowAtStart);
             Run("window: follows the lock, the word and the counts; shows the version", WindowFollowsTheLock);
+            Run("window: the menu bar is LoafLock and Help; Options is in the LoafLock menu", WindowMenus);
             Run("options: the boxes show the settings and save changes right away", OptionsApplyRightAway);
             Run("command line: lock and unlock reach the running copy", CommandLine);
             Run("hotkey: read, written and checked; the picker takes only good ones", HotkeyText);
@@ -76,6 +77,14 @@ namespace LoafLock.Tests
             Run("idle lock: after the minutes, not in a game, never the mouse, counted from the last unlock", IdleLocks);
             Run("options: the hotkey, the volume keys and the idle lock; a taken hotkey puts the old one back", OptionsHotkeyAndVolume);
             Run("loaf: 30 s of paws without a break is a long loaf, told once", LongLoaf);
+            Run("cat detection: typing, key rolls, games and held keys never look like a cat", CatNotTypingOrGames);
+            Run("cat detection: a pile, a paw and a cat settling in do", CatSpotted);
+            Run("cat detection: keys held across an unlock, a lost release, modifiers and the mouse", CatHeldAndStale);
+            Run("gate: a cat lock drops held keys' repeats, lets their releases through, drops fresh keys whole", GateCatLock);
+            Run("hook: watching for a cat lets every key by, locks on a paw, and lets go when turned off", LiveCatWatch);
+            Run("cat detection: a paw locks the keyboard only, and the log says why", CatLocksTheKeyboardOnly);
+            Run("options: cat detection saves right away and starts watching; never without a word", OptionsCatDetection);
+            Run("pop-up: the cat note fits, even with a long name", CatNoteFits);
             Run("look: windows turn dark and light again", Looks);
             Run("remove my settings: the folder and the sign-in entry go", RemoveSettingsForgetsAll);
 

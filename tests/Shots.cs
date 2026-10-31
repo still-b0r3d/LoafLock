@@ -167,7 +167,7 @@ namespace LoafLock.Tests
                         Screenshot(window, Path.Combine(folder, "1-window-locked.png"));
                         window.LockClicked();
                         Pump(() => !locker.IsLocked, "it didn't unlock");
-                        var help = (ToolStripMenuItem)window.MainMenuStrip.Items[2];  // LoafLock, Options, Help
+                        ToolStripMenuItem help = MenuNamed(window, "&Help");
                         help.ShowDropDown();
                         Pump(() => help.DropDown.Visible, "the Help menu didn't open");
                         Settle();
@@ -214,6 +214,14 @@ namespace LoafLock.Tests
                 backdrop.Dispose();
                 try { Directory.Delete(Settings.Dir, true); } catch { }
             }
+        }
+
+        // one of the window's menus, by its name ("&Help")
+        static ToolStripMenuItem MenuNamed(Form form, string text)
+        {
+            foreach (ToolStripItem item in form.MainMenuStrip.Items)
+                if (item.Text == text) return (ToolStripMenuItem)item;
+            throw new Exception("the window has no " + text.Replace("&", "") + " menu");
         }
 
         // in front, over the backdrop, the way it looks to someone using it

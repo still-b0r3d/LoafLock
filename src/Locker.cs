@@ -23,6 +23,8 @@ namespace LoafLock
         int idleFrom = Environment.TickCount;  // idle time counts from here at the earliest
         int lastIdleCheck = Environment.TickCount;
         bool away;  // Windows is locked, or this sign-in is switched away from: no idle lock then
+        bool game;  // a game (or a presentation) has the whole screen: no idle lock or cat detection then
+        bool watchingCats;  // cat detection, as last asked of the hook
         int counted;  // the hook's count when last picked up
         bool asking, forgotten;
 
@@ -50,6 +52,7 @@ namespace LoafLock
             this.hook = hook;
             IntPtr made = marshal.Handle;  // its window, on this thread, now
             hook.Word = settings.UnlockWord;
+            hook.VolumeThrough = settings.VolumeThrough;  // a cat lock reads it too, not just Lock
             hook.LockChanged += locked => Post(delegate { SetLocked(locked); });
             hook.Failed += message => Post(delegate
             {
@@ -59,6 +62,12 @@ namespace LoafLock
                 if (Failed != null) Failed(message);
             });
             hook.Note += line => Post(delegate { Log.Write(line); });  // the hook's thread never writes files
+            // cat detection locked: posted ahead of the lock itself, so the note knows it was the cat
+            hook.Cat += why => Post(delegate
+            {
+                LockedBy = "cat";
+                Log.Write("lock from cat detection: looks like a cat (" + why + ")");
+            });
             poll.Tick += delegate
             {
                 bool blocked = CountBlocked(true);
@@ -73,12 +82,37 @@ namespace LoafLock
                 int now = Environment.TickCount;
                 if (now - lastIdleCheck > 30000) RestartIdle();
                 lastIdleCheck = now;
-                if (Settings.IdleLock && !IsLocked && !away) CheckIdle(Idle.IdleMs(), now - idleFrom, Idle.GameFullscreen());
+                bool fullscreen = (Settings.IdleLock || Settings.CatDetection) && Idle.GameFullscreen();
+                if (fullscreen != game)
+                {
+                    game = fullscreen;
+                    ApplyWatch();
+                }
+                if (watchingCats && !hook.Watching) hook.Watch(true);  // the hook couldn't go in last time: try again
+                if (Settings.IdleLock && !IsLocked && !away) CheckIdle(Idle.IdleMs(), now - idleFrom, game);
             };
             idleCheck.Start();
             // the hook gets installed afresh when the PC wakes up or someone signs back in
             SystemEvents.PowerModeChanged += PowerModeChanged;
             SystemEvents.SessionSwitch += SessionSwitched;
+            ApplyWatch();
+        }
+
+        // "Let the volume keys through" changed: it counts from the next lock, a cat's included
+        public void VolumeChanged()
+        {
+            hook.VolumeThrough = Settings.VolumeThrough;
+            Save();
+        }
+
+        // Cat detection, as the setting says: not before there's an unlock word to get out with,
+        // nor while the word is being changed or a game has the whole screen
+        public void ApplyWatch()
+        {
+            bool on = Settings.CatDetection && Settings.HasWord && !asking && !game && !forgotten;
+            if (on == watchingCats) return;
+            watchingCats = on;
+            hook.Watch(on);
         }
 
         // takes the hotkey from Windows, or gives it back, as the settings say. False (and
@@ -182,6 +216,7 @@ namespace LoafLock
         {
             if (asking || IsLocked) return Settings.HasWord;
             asking = true;
+            ApplyWatch();  // no cat lock while the word is being typed in
             try
             {
                 using (var form = new WordForm(Settings.UnlockWord))
@@ -195,7 +230,11 @@ namespace LoafLock
                 if (Changed != null) Changed();
                 return true;
             }
-            finally { asking = false; }
+            finally
+            {
+                asking = false;
+                ApplyWatch();
+            }
         }
 
         void SetLocked(bool locked)
@@ -244,6 +283,7 @@ namespace LoafLock
         public void ForgetEverything()
         {
             forgotten = true;
+            ApplyWatch();
             Log.Off = true;
             try { StartWithWindows.Set(false, Application.ExecutablePath); } catch { }
             // only ever LoafLock's own folder

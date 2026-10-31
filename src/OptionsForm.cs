@@ -4,8 +4,8 @@ using System.Windows.Forms;
 
 namespace LoafLock
 {
-    // LoafLock's options: from Options in the window's menu bar, or Rukus's menu. Every change
-    // applies and saves right away. New options get a heading of their own here.
+    // LoafLock's options: from Options… in the window's LoafLock menu, or Rukus's menu. Every
+    // change applies and saves right away. New options get a heading of their own here.
     class OptionsForm : Form
     {
         const int ColumnWidth = 360;
@@ -13,7 +13,7 @@ namespace LoafLock
         readonly Locker locker;
         readonly FlowLayoutPanel body;
         FlowLayoutPanel column;  // where Heading, Line and Check add to
-        readonly CheckBox hotkeyOn, volume, noteOnLock, noteOnKeys, mouse, idle, minimized, startup;
+        readonly CheckBox hotkeyOn, volume, noteOnLock, noteOnKeys, mouse, idle, catDetection, minimized, startup;
         readonly RadioButton[] idleChoices;
         readonly Label hotkeyText, hotkeyProblem;
         readonly LinkLabel changeHotkey;
@@ -51,7 +51,7 @@ namespace LoafLock
             var columns = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
             body.Controls.Add(columns);
 
-            // ---- left: how it locks ----
+            // ---- left: how it locks, and the look ----
             column = Column(columns, new Padding(0, 0, 32, 0));
             Heading("Hotkey");
             var hotkeyRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 4) };
@@ -69,7 +69,7 @@ namespace LoafLock
             Line("It only locks. It can't unlock, so a cat can't either.");
 
             Heading("While locked");
-            volume = Check("Let the volume keys through", on => { locker.Settings.VolumeThrough = on; locker.Save(); });
+            volume = Check("Let the volume keys through", on => { locker.Settings.VolumeThrough = on; locker.VolumeChanged(); });
             Line("From the next lock, mute, volume up and down, and a volume knob still work. Play/pause stays locked, or a paw on it would pause the video.");
 
             Heading("The mouse");
@@ -91,7 +91,14 @@ namespace LoafLock
             Line("Minutes. Watching a video without touching anything counts; a game that has the whole screen to itself doesn't (one in a borderless window still does). " +
                 "It locks only the keyboard, so you can click Unlock when you're back.");
 
-            // ---- right: notes, the cat, the look, starting ----
+            Heading("Look");
+            var looks = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 4) };
+            lookWindows = LookChoice(looks, "Like Windows", Look.Windows);
+            lookLight = LookChoice(looks, "Light", Look.Light);
+            lookDark = LookChoice(looks, "Dark", Look.Dark);
+            column.Controls.Add(looks);
+
+            // ---- right: notes, the cat and cat detection, starting ----
             column = Column(columns, new Padding(0));
             Heading("Notes in the corner");
             noteOnLock = Check("When the keyboard locks or unlocks", on => { locker.Settings.NoteOnLock = on; locker.Save(); });
@@ -107,12 +114,16 @@ namespace LoafLock
             column.Controls.Add(nameRow);
             Line("Shown with the paw counts: \"Paws blocked by Rukus\". Leave it empty for none.");
 
-            Heading("Look");
-            var looks = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 4) };
-            lookWindows = LookChoice(looks, "Like Windows", Look.Windows);
-            lookLight = LookChoice(looks, "Light", Look.Light);
-            lookDark = LookChoice(looks, "Dark", Look.Dark);
-            column.Controls.Add(looks);
+            Heading("Cat detection (experimental)");
+            catDetection = Check("Lock when it looks like a cat is on the keyboard", on =>
+            {
+                locker.Settings.CatDetection = on;
+                Log.Write(on ? "cat detection on" : "cat detection off");
+                locker.ApplyWatch();
+                locker.Save();
+            });
+            Line("Locks when several keys go down at once, the way a paw does. It can't spot a cat on a keyboard that senses only 2 keys at once, " +
+                "and holding three keys together in a game could set it off. While it's on, LoafLock watches the keyboard all the time: how many keys are down, never what's typed.");
 
             Heading("Starting");
             minimized = Check("Start minimized (just Rukus in the taskbar corner)", on => { locker.Settings.StartMinimized = on; locker.Save(); });
@@ -166,6 +177,7 @@ namespace LoafLock
         internal CheckBox VolumeBox { get { return volume; } }
         internal string HotkeyProblemText { get { return hotkeyProblem.Text; } }
         internal CheckBox IdleBox { get { return idle; } }
+        internal CheckBox CatDetectionBox { get { return catDetection; } }
         internal RadioButton IdleChoice(int minutes) { return idleChoices[Array.IndexOf(Idle.Choices, minutes)]; }
         internal TextBox CatNameBox { get { return catName; } }
         internal RadioButton LookBox(Look look) { return look == Look.Light ? lookLight : look == Look.Dark ? lookDark : lookWindows; }
@@ -184,6 +196,7 @@ namespace LoafLock
             mouse.Checked = s.LockMouse;  // it applies from the next lock
             idle.Checked = s.IdleLock;
             for (int i = 0; i < Idle.Choices.Length; i++) idleChoices[i].Checked = Idle.Choices[i] == s.IdleMinutes;
+            catDetection.Checked = s.CatDetection;
             if (Settings.CleanName(catName.Text) != s.CatName) catName.Text = s.CatName;  // not while it's being typed
             LookBox(s.Look).Checked = true;
             minimized.Checked = s.StartMinimized;

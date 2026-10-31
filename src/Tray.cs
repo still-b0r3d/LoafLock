@@ -69,6 +69,7 @@ namespace LoafLock
                 if (!nowLocked) popup.Nudge("Keyboard unlocked", settings.PawsBlocked + " today: " + locker.Today.ToString("N0"), false);
                 else if (locker.LockedBy == "idle")
                     popup.Nudge("Keyboard locked by itself", "Nobody used the PC for " + settings.IdleMinutes + " minutes. Type your unlock word to get it back.", true);
+                else if (locker.LockedBy == "cat") popup.Nudge(CatNoteTitle, CatNoteText(settings.CatName), true);
                 else if (locker.MouseLocked) popup.Nudge("Keyboard and mouse locked", "Type your unlock word to get them back.", true);
                 else popup.Nudge("Keyboard locked", "Type your unlock word to get it back.", true);
             };
@@ -121,6 +122,15 @@ namespace LoafLock
         void Restyle()
         {
             Theme.Apply(menu);
+        }
+
+        // the note when cat detection locks: the cat's name goes in the line under it, which wraps,
+        // since a long one wouldn't fit in the heading
+        internal const string CatNoteTitle = "Cat on the keyboard?";
+
+        internal static string CatNoteText(string catName)
+        {
+            return "Looks like " + (catName.Length > 0 ? catName : "a cat") + ", so the keyboard's locked. Type your unlock word to get it back.";
         }
 
         void LoafNote()

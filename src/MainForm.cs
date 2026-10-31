@@ -8,8 +8,8 @@ namespace LoafLock
 {
     // The LoafLock window, from a left click on Rukus or "Open LoafLock". Kept small: Rukus, the
     // Lock / Unlock button, the paws blocked, the unlock word and the version. Everything else
-    // lives in the menu bar: LoafLock, Options (its own window) and Help. Closing it leaves
-    // LoafLock in the taskbar corner.
+    // lives in the menu bar: LoafLock (Options… in it opens its own window) and Help. Closing
+    // it leaves LoafLock in the taskbar corner.
     class MainForm : Form
     {
         public const string MakerUrl = "https://b0r3d.org";
@@ -47,12 +47,11 @@ namespace LoafLock
             var app = new ToolStripMenuItem("&LoafLock");
             lockItem = Item(app, "&Lock keyboard", delegate { LockClicked(); });
             wordItem = Item(app, "&Change unlock word…", delegate { locker.AskForWord(this); });
+            // a menu, not a menu-bar item that pops a window up the moment it's clicked
+            Item(app, "&Options…", delegate { ShowOptions(); });
             app.DropDownItems.Add(new ToolStripSeparator());
             Item(app, "Close this &window", delegate { Close(); });
             Item(app, "&Quit LoafLock", delegate { Log.Write("quit from the window"); Application.ExitThread(); });
-
-            // opens the Options window straight away: it has room for whatever comes next
-            var options = new ToolStripMenuItem("&Options", null, delegate { ShowOptions(); });
 
             var help = new ToolStripMenuItem("&Help");
             Item(help, "If the keyboard's &stuck…", delegate { Stuck(); });
@@ -62,7 +61,7 @@ namespace LoafLock
             Item(help, "&About LoafLock", delegate { About(); });
             Item(help, "Visit &b0r3d.org", delegate { Open(MakerUrl); });
 
-            menu.Items.AddRange(new ToolStripItem[] { app, options, help });
+            menu.Items.AddRange(new ToolStripItem[] { app, help });
             MainMenuStrip = menu;
 
             // ---- the window itself ----
@@ -142,7 +141,7 @@ namespace LoafLock
             locker.LockOrUnlock(this, "window");
         }
 
-        // the Options window, over this one (from the menu bar, or Rukus's "Options…")
+        // the Options window, over this one (from the LoafLock menu, or Rukus's "Options…")
         internal void ShowOptions()
         {
             if (optionsOpen) return;

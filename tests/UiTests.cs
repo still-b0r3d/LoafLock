@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -129,6 +130,21 @@ namespace LoafLock.Tests
                 Check(locker.IsLocked && !locker.MouseLocked && window.StateText.StartsWith("Keyboard locked"), "letting go of the mouse did more, or less");
                 locker.Unlock("command line");
                 Pump(() => !locker.IsLocked, "unlocking from the command line didn't unlock");
+            }
+        }
+
+        // 0.81: the menu bar has just LoafLock and Help; Options… is in the LoafLock menu
+        static void WindowMenus()
+        {
+            using (var locker = new Locker(new Settings { UnlockWord = "rukus" }, new KeyHook(new KeyGate(), true)))
+            using (var window = new MainForm(locker))
+            {
+                var bar = new List<string>();
+                foreach (ToolStripItem item in window.MainMenuStrip.Items) bar.Add(item.Text);
+                Check(string.Join(" ", bar.ToArray()) == "&LoafLock &Help", "the menu bar is \"" + string.Join(" ", bar.ToArray()) + "\"");
+                var app = new List<string>();
+                foreach (ToolStripItem item in MenuNamed(window, "&LoafLock").DropDownItems) app.Add(item.Text);
+                Check(app.IndexOf("&Options…") == app.IndexOf("&Change unlock word…") + 1, "Options… isn't under Change unlock word… in the LoafLock menu");
             }
         }
 

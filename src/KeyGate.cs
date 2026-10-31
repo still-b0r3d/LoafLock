@@ -17,6 +17,8 @@ namespace LoafLock
     //                - a key first seen just after locking (or after the hook was renewed): it
     //                  may have been held since before, and what LoafLock saw was its first
     //                  repeat. A held key repeats within HeldGraceMs, so later ones are new.
+    //                - a key down when the cat detector locked (LockWatched): it watched the key
+    //                  go down, so it knows the press reached the app.
     //                - a key that turns out to have been repeating already: pressed again
     //                  sooner than a new press would start repeating (RepeatSplitMs). Its first
     //                  press got past LoafLock (Windows gave up waiting for the hook, or it
@@ -94,6 +96,32 @@ namespace LoafLock
             Locked = true;
         }
 
+        // Locked by the cat detector, which watched every key go by while unlocked. The keys down
+        // now reached the app, so their repeats are dropped and their releases go through; every
+        // other key is a fresh press, dropped along with its release. (A key first seen just
+        // after the hook went in or was renewed may still have been held from before:
+        // watchedSince stays where that put it.)
+        public void LockWatched()
+        {
+            for (int vk = 0; vk < 256; vk++)
+            {
+                if (!down[vk] || dropping[vk]) continue;
+                dropping[vk] = true;
+                paired[vk] = repeated[vk] = false;
+                pending++;
+            }
+            matched = 0;
+            Locked = true;
+        }
+
+        // the hook went in to watch for a cat: keys went by while it wasn't looking, so it can't
+        // know which are down
+        public void StartWatching(int now)
+        {
+            for (int vk = 0; vk < 256; vk++) down[vk] = dropping[vk];
+            watchedSince = now;
+        }
+
         // the hook was installed afresh: another program's hook may have been ahead of it until
         // now, and seen presses LoafLock didn't
         public void Rehooked(int now)
@@ -124,7 +152,7 @@ namespace LoafLock
                 Forget(vk);
                 repeat = false;
             }
-            seen[vk] = time;
+            seen[vk] = pressed ? time : 0;  // a key that's up keeps no time, so nothing here says what was typed when
             down[vk] = pressed;
 
             if (!pressed)
@@ -202,7 +230,8 @@ namespace LoafLock
             if (matched == word.Length) Unlock();
         }
 
-        static bool IsModifier(int vk)
+        // Shift, Ctrl, Alt, Caps Lock and the Windows keys
+        public static bool IsModifier(int vk)
         {
             switch (vk)
             {
