@@ -10,16 +10,17 @@ namespace LoafLock
     //              at a time, on a keyboard that senses only 3 keys at once),
     // where the keys of a pile or a settle went down within BurstMs of each other. A cat puts
     // its keys down in a burst, so a gamer holding W+A who adds push-to-talk seconds later isn't
-    // one. Three game keys pressed within a second and held (W, then Space and D) still are, and
-    // so is a standing diagonal jump (W, A and Space at once): Options and the README say so.
-    // Shift, Ctrl, Alt, the Windows keys and Caps Lock never count, so a shortcut can't. Typing
-    // overlaps 2 or 3 keys for a split second, and a fast roll of keys is let go within HoldMs.
-    // A keyboard that senses only 2 keys at once (some cheap ones and laptops) can never show it
-    // a cat.
+    // one. Three game keys pressed within a second and held (W, then Space and D) still are:
+    // Options and the README say so. Shift, Ctrl, Alt, the Windows keys and Caps Lock never
+    // count, so a shortcut can't. Typing overlaps 2 or 3 keys for a split second, and a fast
+    // roll of keys, or a tap like a jump on Space, is let go within HoldMs; even a walking cat
+    // keeps a paw down longer. (HoldMs was 0.1 s until a false alarm in the owner's test run: 3
+    // keys within 15 ms, together for a little over a tenth of a second.) A keyboard that senses
+    // only 2 keys at once (some cheap ones and laptops) can never show it a cat.
     sealed class PawWatch
     {
         public int PileKeys = 4, PawKeys = 3;
-        public int PawMs = 40, HoldMs = 100, SettleMs = 1500, BurstMs = 1000;
+        public int PawMs = 40, HoldMs = 250, SettleMs = 1500, BurstMs = 1000;
         // a key silent this long stops counting: its release may never have come (Ctrl+Alt+Del's
         // screen, locking the PC). A key under a resting paw goes quiet too, since Windows repeats
         // only the last key pressed, but every rule has fired long before then.

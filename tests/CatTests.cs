@@ -100,6 +100,18 @@ namespace LoafLock.Tests
             Press(keys, 30000, 'Q', 4000);
             Check(NoCat(keys, 62000), "a game (W+A held, Space taps, push-to-talk, a lean) looked like a cat");
 
+            // the owner's false alarm: three keys within 15 ms (the same tick and the next),
+            // together a little over a tenth of a second; and a standing diagonal jump, W, A and
+            // Space at once with Space let go again
+            keys = new List<int[]>();
+            Press(keys, 1000, 'E', 150);
+            Press(keys, 1000, 'R', 160);
+            Press(keys, 1016, 'T', 140);
+            Press(keys, 3000, 'W', 3000);
+            Press(keys, 3005, 'A', 3000);
+            Press(keys, 3010, Space, 160);
+            Check(NoCat(keys, 7000), "three keys landing together but let go within a quarter of a second (a tap, a jump) looked like a cat");
+
             // Backspace held down; Shift, Ctrl, Alt, Windows and Caps Lock held with one key
             keys = new List<int[]>();
             Press(keys, 1000, Backspace, 8000);
@@ -115,17 +127,17 @@ namespace LoafLock.Tests
             for (int i = 0; i < 5; i++) Press(keys, 1000 + i * 60, "ASDFG"[i], 3000);
             var w = new PawWatch();
             int at = FirstCat(w, keys, 5000);
-            Check(at == 1280 && w.Why == "5 keys down at once",
-                "a pile was spotted at " + at + " ms (\"" + w.Why + "\"), expected 1280 ms (the fourth key + 0.1 s), five keys down at once");
-            Check(FirstCatLikeTheHook(keys, 5000) == 1280, "looking only where the hook looks, the pile was spotted at " + FirstCatLikeTheHook(keys, 5000) + " ms, not 1280");
+            Check(at == 1430 && w.Why == "5 keys down at once",
+                "a pile was spotted at " + at + " ms (\"" + w.Why + "\"), expected 1430 ms (the fourth key + 0.25 s), five keys down at once");
+            Check(FirstCatLikeTheHook(keys, 5000) == 1430, "looking only where the hook looks, the pile was spotted at " + FirstCatLikeTheHook(keys, 5000) + " ms, not 1430");
 
             // a paw: three keys within 30 ms
             keys = new List<int[]>();
             for (int i = 0; i < 3; i++) Press(keys, 2000 + i * 15, "JKL"[i], 400);
             w = new PawWatch();
             at = FirstCat(w, keys, 5000);
-            Check(at == 2130 && w.Why == "3 keys down within 30 ms of each other", "a paw was spotted at " + at + " ms (\"" + w.Why + "\"), expected 2130 ms");
-            Check(FirstCatLikeTheHook(keys, 5000) == 2130, "looking only where the hook looks, the paw was spotted at " + FirstCatLikeTheHook(keys, 5000) + " ms, not 2130");
+            Check(at == 2280 && w.Why == "3 keys down within 30 ms of each other", "a paw was spotted at " + at + " ms (\"" + w.Why + "\"), expected 2280 ms");
+            Check(FirstCatLikeTheHook(keys, 5000) == 2280, "looking only where the hook looks, the paw was spotted at " + FirstCatLikeTheHook(keys, 5000) + " ms, not 2280");
 
             // a cat settling onto a keyboard that senses 3 keys at once: one key, then another, then
             // another, all within a second
@@ -167,7 +179,7 @@ namespace LoafLock.Tests
             w.OnKey('S', true, unchecked(start + 20));
             w.OnKey('D', true, unchecked(start + 50));
             w.OnKey('F', true, unchecked(start + 70));
-            Check(w.NextLook(unchecked(start + 100)) == 70 && !w.IsCat(unchecked(start + 160)) && w.IsCat(unchecked(start + 170)),
+            Check(w.NextLook(unchecked(start + 100)) == 220 && !w.IsCat(unchecked(start + 310)) && w.IsCat(unchecked(start + 320)),
                 "a pile across the clock's wrap round wasn't spotted on time");
         }
 
@@ -176,14 +188,14 @@ namespace LoafLock.Tests
             // still lying on four keys at the unlock: they don't count until they're let go
             var w = new PawWatch();
             foreach (char k in "QWER") w.OnKey(k, true, 1000);
-            Check(w.IsCat(1200), "four keys down weren't a cat");
+            Check(w.IsCat(1300), "four keys down weren't a cat");
             w.LeaveHeld();
-            Check(!w.IsCat(1300) && w.NextLook(1300) == -1, "keys held across the unlock still counted");
-            w.OnKey('T', true, 1400);
-            Check(!w.IsCat(1600), "one fresh key with four held ones was taken for a cat");
-            foreach (char k in "QWER") w.OnKey(k, false, 1700);
-            foreach (char k in "QWER") w.OnKey(k, true, 1800);
-            Check(w.IsCat(1900), "fresh presses of keys let go after the unlock didn't count");
+            Check(!w.IsCat(1400) && w.NextLook(1400) == -1, "keys held across the unlock still counted");
+            w.OnKey('T', true, 1500);
+            Check(!w.IsCat(1700), "one fresh key with four held ones was taken for a cat");
+            foreach (char k in "QWER") w.OnKey(k, false, 1800);
+            foreach (char k in "QWER") w.OnKey(k, true, 1900);
+            Check(w.IsCat(2200), "fresh presses of keys let go after the unlock didn't count");
 
             // a key whose release never came, pressed again much later, is a fresh press
             w = new PawWatch();
@@ -191,7 +203,7 @@ namespace LoafLock.Tests
             w.OnKey('A', true, 7000);
             w.OnKey('S', true, 7010);
             w.OnKey('D', true, 7020);
-            Check(w.IsCat(7130) && w.Why == "3 keys down within 20 ms of each other",
+            Check(w.IsCat(7280) && w.Why == "3 keys down within 20 ms of each other",
                 "a key pressed again after its release went missing wasn't a fresh press (\"" + w.Why + "\")");
 
             // Shift, Ctrl, Alt, Windows, Caps Lock and the mouse buttons never count
@@ -259,7 +271,7 @@ namespace LoafLock.Tests
                 var landed = Stopwatch.StartNew();
                 foreach (ushort vk in new[] { F20, F21, F22, F23 }) Send(vk, false);  // a paw: four keys at once
                 WaitFor(() => Changes(changes) == "L", "a paw of four keys didn't lock");
-                // a pile or a paw locks a tenth of a second on, not at the settle's 1.5 s
+                // a pile or a paw locks a quarter of a second on, not at the settle's 1.5 s
                 Check(landed.ElapsedMilliseconds < 700, "the paw took " + landed.ElapsedMilliseconds + " ms to lock");
                 // Windows stamps keys in ticks of about 16 ms: with the fourth key a tick behind,
                 // the first three make a paw before the four make a pile
