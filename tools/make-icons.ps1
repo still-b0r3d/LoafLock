@@ -1,4 +1,4 @@
-# Builds LoafLock's two tray icons into assets\ from Rukus (art\rukus.ico, the same file as
+# Builds LoafLock's two tray icons into assets\ from Ruckus (art\rukus.ico, the same file as
 # b0r3d.org's imgs/rukus.ico). Run it again after changing the art or the lock:
 #   powershell -ExecutionPolicy Bypass -File tools\make-icons.ps1
 #   -Look gold|red|bars   the locked look that goes into loaflock-locked.ico (LoafLock's is
@@ -21,7 +21,7 @@ $Fills = @{ gold = '#F4C430'; red = '#E0393E' }
 $Holes = @{ gold = '#1E1E22'; red = '#FFFFFF' }
 
 # the padlock pixel by pixel for the small sizes, where a drawn shape turns to mush:
-# o = outline, f = the lock's colour, k = keyhole, . = Rukus shows through
+# o = outline, f = the lock's colour, k = keyhole, . = Ruckus shows through
 $PixelLocks = @{
     16 = '..ooo..', '.o...o.', '.o...o.', 'ooooooo', 'offfffo', 'offkffo', 'offkffo', 'offfffo', 'ooooooo'
     20 = '...ooo...', '..o...o..', '..o...o..', '..o...o..', 'ooooooooo', 'offfffffo', 'offfkfffo', 'offfkfffo', 'offfffffo', 'ooooooooo'
@@ -47,7 +47,7 @@ function Read-Frames([string]$path) {
 $Frames = Read-Frames (Join-Path $PSScriptRoot '..\art\rukus.ico')
 if (-not $Frames.ContainsKey(256)) { throw 'art\rukus.ico has no 256 px picture' }
 
-# Rukus at $size: rukus.ico's own picture when it has that size, otherwise scaled down from 256
+# Ruckus at $size: rukus.ico's own picture when it has that size, otherwise scaled down from 256
 function New-Rukus([int]$size) {
     if ($Frames.ContainsKey($size)) { return [Drawing.Bitmap]::new($Frames[$size]) }
     $bmp = [Drawing.Bitmap]::new($size, $size, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
@@ -117,7 +117,7 @@ function Add-DrawnLock([Drawing.Bitmap]$bmp, [Drawing.Color]$fill, [Drawing.Colo
     $g.Dispose()
 }
 
-# three dark bars down Rukus, only where Rukus is
+# three dark bars down Ruckus, only where Ruckus is
 function Add-Bars([Drawing.Bitmap]$bmp) {
     $S = $bmp.Width
     $w = [math]::Max(1, [math]::Round($S / 14))
@@ -135,7 +135,7 @@ function Add-Bars([Drawing.Bitmap]$bmp) {
     }
 }
 
-# Rukus at $size with the given locked look ('' = unlocked)
+# Ruckus at $size with the given locked look ('' = unlocked)
 function New-Frame([int]$size, [string]$look) {
     $bmp = New-Rukus $size
     if ($look -eq 'bars') { Add-Bars $bmp }

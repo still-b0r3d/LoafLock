@@ -21,7 +21,7 @@ namespace LoafLock
         // the note in the corner: when the keyboard locks or unlocks, and on every blocked key
         public bool NoteOnLock = true, NoteOnKeys;
 
-        public bool StartMinimized;  // start as just Rukus in the taskbar corner, no window
+        public bool StartMinimized;  // start as just Ruckus in the taskbar corner, no window
 
         public bool LockMouse;  // lock the mouse too: the pointer, the buttons and the wheel
 

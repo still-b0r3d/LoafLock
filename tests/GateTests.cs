@@ -322,14 +322,14 @@ namespace LoafLock.Tests
             Check(back.PawsBlocked == "Paws blocked by Biscuit" && new Settings().PawsBlocked == "Paws blocked", "the paws line is " + back.PawsBlocked);
             Check(Settings.CleanName("  Sir\tWhiskers  ") == "SirWhiskers" && Settings.CleanName(new string('x', 40)).Length == Settings.MaxNameLength,
                 "a name with a tab or too many letters wasn't tidied");
-            File.WriteAllText(Settings.FilePath, "look=purple\r\ncat_name= Rukus = loaf \r\n");
+            File.WriteAllText(Settings.FilePath, "look=purple\r\ncat_name= Ruckus = loaf \r\n");
             back = Settings.Load();
-            Check(back.Look == Look.Windows && back.CatName == "Rukus = loaf", "a hand-edited look or name was read wrong");
+            Check(back.Look == Look.Windows && back.CatName == "Ruckus = loaf", "a hand-edited look or name was read wrong");
             s = new Settings();
             s.UnlockWord = "rukus";
             s.Save();
             Check(Settings.Load().UnlockWord == "rukus", "the word didn't come back");
-            Check(Settings.WordProblem("Rukus") == null, "a good word was turned down");
+            Check(Settings.WordProblem("Ruckus") == null, "a good word was turned down");
             Check(Settings.WordProblem("cat") != null, "a 3-letter word was accepted");
             Check(Settings.WordProblem("ru kus") != null && Settings.WordProblem("ruku5") != null && Settings.WordProblem("rükus") != null,
                 "a word with a space, a number or an accent was accepted");

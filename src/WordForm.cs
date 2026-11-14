@@ -68,7 +68,7 @@ namespace LoafLock
             body.Controls.Add(problem);
 
             body.Controls.Add(Note(
-                "Rukus's menu in the taskbar corner locks and unlocks too. If you're ever stuck: " +
+                "Ruckus's menu in the taskbar corner locks and unlocks too. If you're ever stuck: " +
                 "Ctrl+Alt+Del, Task Manager, end LoafLock.", Theme.DimTag));
 
             var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Anchor = AnchorStyles.Right, Margin = new Padding(0, 8, 0, 0) };

@@ -169,8 +169,8 @@ namespace LoafLock.Tests
 
         // .NET Framework draws an .ico's PNG-packed frames under 256 px as random static (seen
         // 2026-10-27 with b0r3d.org's rukus.ico). Static is see-through in random places, mostly
-        // half see-through, and no two neighbouring pixels look alike; Rukus is the opposite.
-        // (Rukus's 16 px picture has a few nearly-solid and nearly-clear pixels, hence the slack.)
+        // half see-through, and no two neighbouring pixels look alike; Ruckus is the opposite.
+        // (Ruckus's 16 px picture has a few nearly-solid and nearly-clear pixels, hence the slack.)
         // Returns why the picture looks like static, or null when it doesn't.
         static string WhyNotAPicture(Bitmap bmp)
         {

@@ -6,7 +6,7 @@ using System.Windows.Forms;
 
 namespace LoafLock
 {
-    // The LoafLock window, from a left click on Rukus or "Open LoafLock". Kept small: Rukus, the
+    // The LoafLock window, from a left click on Ruckus or "Open LoafLock". Kept small: Ruckus, the
     // Lock / Unlock button, the paws blocked, the unlock word and the version. Everything else
     // lives in the menu bar: LoafLock (Options… in it opens its own window) and Help. Closing
     // it leaves LoafLock in the taskbar corner.
@@ -74,7 +74,7 @@ namespace LoafLock
                 Padding = new Padding(24, 14, 24, 18)
             };
 
-            // Rukus, the name, and where things stand
+            // Ruckus, the name, and where things stand
             var top = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 12) };
             rukus = new PictureBox { Size = new Size(64, 64), SizeMode = PictureBoxSizeMode.Zoom, Margin = new Padding(0, 0, 14, 0) };
             top.Controls.Add(rukus);
@@ -141,7 +141,7 @@ namespace LoafLock
             locker.LockOrUnlock(this, "window");
         }
 
-        // the Options window, over this one (from the LoafLock menu, or Rukus's "Options…")
+        // the Options window, over this one (from the LoafLock menu, or Ruckus's "Options…")
         internal void ShowOptions()
         {
             if (optionsOpen) return;
@@ -179,7 +179,7 @@ namespace LoafLock
             MessageBox.Show(this,
                 "If the keyboard stays locked:\n\n" +
                 "•  Type your unlock word" + (locker.Settings.HasWord ? " (" + locker.Settings.UnlockWord + ")" : "") + ".\n" +
-                "•  Or click Unlock keyboard, here or in Rukus's menu in the taskbar corner.\n" +
+                "•  Or click Unlock keyboard, here or in Ruckus's menu in the taskbar corner.\n" +
                 "•  Mouse locked too? Press Ctrl+Alt+Del and pick Lock, then sign back in: the mouse works again, so you can click Unlock.\n" +
                 "•  Still stuck? Press Ctrl+Alt+Del, open Task Manager and end LoafLock. The keyboard comes back at once.",
                 "LoafLock", MessageBoxButtons.OK, MessageBoxIcon.Information);

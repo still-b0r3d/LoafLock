@@ -1,7 +1,7 @@
 # What changed
 
 Each version's exe says its build (the commit it was made from) in the window, in
-Rukus's menu and under Help → About.
+Ruckus's menu and under Help → About.
 
 ## 0.81
 
@@ -14,6 +14,8 @@ Rukus's menu and under Help → About.
   unlocked too.
 - **Options…** is in the window's LoafLock menu now, so the menu bar is just LoafLock and
   Help. Look moved to the left side of the Options window to make room.
+- The cat's name is spelled Ruckus now (it was Rukus), in the window's help, the unlock
+  word window, Options and the README.
 
 ## 0.8
 
@@ -30,7 +32,7 @@ Rukus's menu and under Help → About.
 
 ## 0.7
 
-- On a long loaf (half a minute of paws without a break) Rukus nods off in the note:
+- On a long loaf (half a minute of paws without a break) Ruckus nods off in the note:
   "Biscuit is loafing", with a "z Z Z". Once per loaf.
 
 ## 0.6
@@ -65,5 +67,5 @@ Rukus's menu and under Help → About.
 
 ## 0.2
 
-- The first version: lock and unlock from Rukus in the taskbar corner, an unlock word,
+- The first version: lock and unlock from Ruckus in the taskbar corner, an unlock word,
   the LoafLock window, paws blocked today and all time, start with Windows.

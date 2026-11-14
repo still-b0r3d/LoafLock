@@ -1,12 +1,12 @@
 # LoafLock
 
 Keeps a cat lying on the keyboard from typing. LoafLock sits in the Windows taskbar corner
-as Rukus. Lock the keyboard from there, and key presses go nowhere: the video keeps
+as Ruckus. Lock the keyboard from there, and key presses go nowhere: the video keeps
 playing and nothing gets typed. The mouse keeps working (or locks too, if you like).
 
 Version 0.81, for Windows 10 and 11. Made by [b0r3d.org](https://b0r3d.org).
 
-![The LoafLock window with the keyboard locked: Rukus wears a gold padlock, and the button says Unlock keyboard](docs/images/1-window-locked.png)
+![The LoafLock window with the keyboard locked: Ruckus wears a gold padlock, and the button says Unlock keyboard](docs/images/1-window-locked.png)
 
 ## Getting it
 
@@ -25,7 +25,7 @@ Version 0.81, for Windows 10 and 11. Made by [b0r3d.org](https://b0r3d.org).
 
    ![Picking an unlock word on the first run](docs/images/2-unlock-word.png)
 
-2. Click **Lock keyboard**, in the LoafLock window or in Rukus's menu (right-click him in
+2. Click **Lock keyboard**, in the LoafLock window or in Ruckus's menu (right-click him in
    the taskbar corner). He gets a gold padlock, and key presses go nowhere. A small note in
    the corner says so; it never takes focus, so a fullscreen video stays fullscreen.
 
@@ -33,13 +33,13 @@ Version 0.81, for Windows 10 and 11. Made by [b0r3d.org](https://b0r3d.org).
 
 3. To get the keyboard back, type your unlock word, or click **Unlock keyboard**.
 
-Right-click Rukus in the taskbar corner for his menu (you might need to click the **^** arrow
+Right-click Ruckus in the taskbar corner for his menu (you might need to click the **^** arrow
 to see him):
 
-![Rukus's menu: Open LoafLock, Lock keyboard, the paws blocked today and all time, Options, Quit LoafLock](docs/images/4-menu.png)
+![Ruckus's menu: Open LoafLock, Lock keyboard, the paws blocked today and all time, Options, Quit LoafLock](docs/images/4-menu.png)
 
-Left-click Rukus any time for the window: the paws blocked today and all time, and your
-unlock word. **Options…** (in the window's LoafLock menu, or Rukus's menu) has:
+Left-click Ruckus any time for the window: the paws blocked today and all time, and your
+unlock word. **Options…** (in the window's LoafLock menu, or Ruckus's menu) has:
 
 ![The Options window: the hotkey, the volume keys, the mouse, locking by itself and the look; the notes, your cat's name, cat detection and starting](docs/images/5-options.png)
 
@@ -52,8 +52,8 @@ unlock word. **Options…** (in the window's LoafLock menu, or Rukus's menu) has
   to start with). Watching a video without touching anything counts; a game that has the
   whole screen to itself doesn't (one in a borderless window still does). It locks only the keyboard, so whoever comes back can click Unlock;
 - the notes (on locking and unlocking, or on every blocked key). When the cat's been lying
-  on the keyboard for half a minute, Rukus nods off in one: "Biscuit is loafing";\
-  ![Rukus nodding off in the note: Biscuit is loafing. Nothing gets typed: the keyboard's locked.](docs/images/6-note-loafing.png)
+  on the keyboard for half a minute, Ruckus nods off in one: "Biscuit is loafing";\
+  ![Ruckus nodding off in the note: Biscuit is loafing. Nothing gets typed: the keyboard's locked.](docs/images/6-note-loafing.png)
 - **your cat's name**, for "Paws blocked by Biscuit";
 - **Cat detection** (experimental, off to start with): it locks when several keys go down
   at once, the way a paw does: 4 together, 3 landing at the same moment, or 3 put down
@@ -82,7 +82,7 @@ Newer versions: **Help → Check for updates…** opens the Releases page.
 
 ## If you're ever stuck
 
-- Type your unlock word, or click **Unlock keyboard** in the window or Rukus's menu.
+- Type your unlock word, or click **Unlock keyboard** in the window or Ruckus's menu.
 - Press **Ctrl+Alt+Del**, click **Task Manager**, click **LoafLock**, click **End task**.
   The keyboard (and mouse) come back at once.
 - With the mouse locked too: **Ctrl+Alt+Del**, **Lock**, then sign back in. The mouse
@@ -129,7 +129,7 @@ build.cmd         builds bin\LoafLock.exe
 build.cmd test    builds it and runs the tests
 ```
 
-The tray icons are made from Rukus by `tools\make-icons.ps1`, and the pictures here by
+The tray icons are made from Ruckus by `tools\make-icons.ps1`, and the pictures here by
 `bin\LoafLockTests.exe --screenshots docs\images` (windows pop up on the main screen for
 about 15 seconds). What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
 
@@ -140,4 +140,4 @@ MIT, with the Commons Clause: free to use, change and share, but not to sell. Se
 
 ---
 
-Made by [b0r3d.org](https://b0r3d.org). Rukus is b0r3d.org's cat.
+Made by [b0r3d.org](https://b0r3d.org). Ruckus is b0r3d.org's cat.

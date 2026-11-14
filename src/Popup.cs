@@ -68,7 +68,7 @@ namespace LoafLock
             DwmSetWindowAttribute(Handle, 33, ref round, sizeof(int));
         }
 
-        // what the note says, and which Rukus: with the padlock (locked), nodding off (sleepy).
+        // what the note says, and which Ruckus: with the padlock (locked), nodding off (sleepy).
         // The screenshot tool sets it without showing it.
         internal void Set(string heading, string line, bool locked, bool sleepy = false)
         {
@@ -138,7 +138,7 @@ namespace LoafLock
             TextRenderer.DrawText(g, text, textFont, new Rectangle(x, top + head.Height, width, body.Height), Color.FromArgb(205, 205, 210), TextFormatFlags.WordBreak);
         }
 
-        // "z Z Z" drifting up from the top right of Rukus's head, small to big
+        // "z Z Z" drifting up from the top right of Ruckus's head, small to big
         void Zzz(Graphics g, int x, int y, int size)
         {
             float s = size / 48f;

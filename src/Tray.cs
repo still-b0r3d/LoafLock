@@ -18,7 +18,7 @@ namespace LoafLock
         }
     }
 
-    // Rukus in the taskbar corner, with a gold padlock while the keyboard is locked. A left
+    // Ruckus in the taskbar corner, with a gold padlock while the keyboard is locked. A left
     // click opens the LoafLock window; a right click has Lock / Unlock and the paws blocked.
     sealed class Tray : IDisposable
     {
@@ -80,7 +80,7 @@ namespace LoafLock
                 else popup.Nudge(locker.MouseLocked ? "Keyboard and mouse are locked" : "Keyboard's locked",
                     "Type your unlock word to get " + (locker.MouseLocked ? "them" : "it") + " back.\n" + settings.PawsBlocked + " today: " + locker.Today.ToString("N0"), true);
             };
-            // a long loaf: Rukus nods off in the note (with the lock and unlock notes)
+            // a long loaf: Ruckus nods off in the note (with the lock and unlock notes)
             locker.LongLoaf += delegate
             {
                 if (settings.NoteOnLock) LoafNote();

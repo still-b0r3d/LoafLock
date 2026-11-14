@@ -70,7 +70,7 @@ namespace LoafLock
             if (form.IsHandleCreated) TitleBar(form.Handle);
         }
 
-        // a menu on its own (Rukus's menu in the taskbar corner)
+        // a menu on its own (Ruckus's menu in the taskbar corner)
         public static void Apply(ToolStrip strip)
         {
             if (Dark) strip.Renderer = DarkMenus;

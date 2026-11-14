@@ -1,7 +1,7 @@
 // LoafLock: locks the keyboard so a cat lying on it can't type. The mouse keeps working, unless
 // it's set to lock too.
 //
-//   LoafLock.exe            sits in the taskbar corner as Rukus and opens its window; opened
+//   LoafLock.exe            sits in the taskbar corner as Ruckus and opens its window; opened
 //                           again while running, it brings up the running one's window
 //   LoafLock.exe --startup  the same without the window (how Windows starts it at sign-in)
 //   LoafLock.exe lock       locks the keyboard (starting LoafLock quietly if it isn't running),

@@ -13,9 +13,9 @@ namespace LoafLock.Tests
     // the unlock-word dialog into PNG files, straight from the controls. Nothing shows on screen
     // and nothing takes focus; locking uses a test-mode hook.
     //
-    // LoafLockTests.exe --screenshots docs\images: the README's pictures. The window, Rukus's
+    // LoafLockTests.exe --screenshots docs\images: the README's pictures. The window, Ruckus's
     // menu, Options and the notes, shown on the main screen in front of a plain backdrop and
-    // captured as Windows draws them (title bar, shadow and all). It takes about 15 seconds; Rukus
+    // captured as Windows draws them (title bar, shadow and all). It takes about 15 seconds; Ruckus
     // shows up in the taskbar corner meanwhile, and locking uses a test-mode hook, so the keyboard
     // keeps working.
     static partial class TestMain
@@ -143,16 +143,16 @@ namespace LoafLock.Tests
             {
                 backdrop.Show();
                 Theme.Set(Look.Light);
-                // Rukus's menu comes first: after a menu from a window's menu bar (Help, below),
+                // Ruckus's menu comes first: after a menu from a window's menu bar (Help, below),
                 // WinForms closes a menu opened like this one straight away. It's from a Tray of
                 // its own, started quietly, and never locked.
                 using (var tray = new Tray(Example(Look.Light), true, false))
                 {
                     var menu = (ContextMenuStrip)typeof(Tray).GetField("menu", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(tray);
                     menu.Show(backdrop, new Point(200, 140));
-                    Pump(() => menu.Visible, "Rukus's menu didn't open");
+                    Pump(() => menu.Visible, "Ruckus's menu didn't open");
                     Settle();
-                    Check(menu.Visible, "Rukus's menu closed before it was captured");
+                    Check(menu.Visible, "Ruckus's menu closed before it was captured");
                     Capture(Rectangle.Inflate(menu.Bounds, 18, 18), Path.Combine(folder, "4-menu.png"));
                     menu.Close();
                 }

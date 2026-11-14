@@ -4,7 +4,7 @@ using System.Windows.Forms;
 
 namespace LoafLock
 {
-    // LoafLock's options: from Options… in the window's LoafLock menu, or Rukus's menu. Every
+    // LoafLock's options: from Options… in the window's LoafLock menu, or Ruckus's menu. Every
     // change applies and saves right away. New options get a heading of their own here.
     class OptionsForm : Form
     {
@@ -112,7 +112,7 @@ namespace LoafLock
             catName.TextChanged += delegate { if (!loading) NameChanged(); };
             nameRow.Controls.Add(catName);
             column.Controls.Add(nameRow);
-            Line("Shown with the paw counts: \"Paws blocked by Rukus\". Leave it empty for none.");
+            Line("Shown with the paw counts: \"Paws blocked by Ruckus\". Leave it empty for none.");
 
             Heading("Cat detection (experimental)");
             catDetection = Check("Lock when it looks like a cat is on the keyboard", on =>
@@ -126,7 +126,7 @@ namespace LoafLock
                 "and holding three keys together in a game could set it off. While it's on, LoafLock watches the keyboard all the time: how many keys are down, never what's typed.");
 
             Heading("Starting");
-            minimized = Check("Start minimized (just Rukus in the taskbar corner)", on => { locker.Settings.StartMinimized = on; locker.Save(); });
+            minimized = Check("Start minimized (just Ruckus in the taskbar corner)", on => { locker.Settings.StartMinimized = on; locker.Save(); });
             startup = Check("Start LoafLock when you sign in to Windows", StartupChanged);
 
             Heading("Your settings");
