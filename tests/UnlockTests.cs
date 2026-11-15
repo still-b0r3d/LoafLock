@@ -96,6 +96,47 @@ namespace LoafLock.Tests
             foreach (char k in "ASD") Check(!Up(g, k), "a paw key's release was dropped after a cat lock");
             Check(g.Gone(clock + Quiet, Quiet), "after a cat lock, the cat going didn't count");
 
+            // a key whose release never came while cat detection watched (Alt+Tab into an admin
+            // window takes Alt's and Tab's releases): once it's been silent StaleMs it's let go
+            // of, so the next cat lock can still unlock by itself and with the hotkey
+            KeyGate stale = new KeyGate();
+            stale.SetWord("rukus");
+            stale.SetUnlockHotkey(KeyL, true, true, false);
+            stale.StartWatching(clock);
+            clock += 1000;
+            Down(stale, Alt);
+            Down(stale, 0x09);  // Tab
+            clock += stale.StaleMs + 100;
+            stale.Expire(clock);
+            foreach (char k in "ASDF") Down(stale, k);
+            stale.LockWatched();
+            foreach (char k in "ASDF") Up(stale, k);
+            Check(stale.Gone(clock + Quiet, Quiet), "a key whose release never came kept the auto unlock from ever undoing a cat lock");
+            clock += Quiet;
+            Down(stale, Ctrl);
+            Down(stale, Shift);
+            Down(stale, KeyL);
+            Up(stale, KeyL);
+            Check(!stale.Locked && stale.UnlockedBy == "hotkey", "a key whose release never came kept the hotkey from undoing a cat lock");
+
+            // ...but a paw's key is never that old: one put down 2.5 s before the cat lock (a slow
+            // settle) still counts as held, so the lock waits for it to come up
+            KeyGate settle = new KeyGate();
+            settle.SetWord("rukus");
+            settle.StartWatching(clock);
+            clock += 1000;
+            Down(settle, 'A');
+            clock += 2500;
+            settle.Expire(clock);
+            Down(settle, 'S');
+            Down(settle, 'D');
+            settle.LockWatched();
+            Up(settle, 'S');
+            Up(settle, 'D');
+            Check(!settle.Gone(clock + Quiet, Quiet), "a paw key put down 2.5 s before the cat lock was forgotten: it would unlock with that key still held");
+            Up(settle, 'A');
+            Check(settle.Gone(clock + Quiet, Quiet), "the paw's last key came up, but it wouldn't unlock");
+
             // how it unlocked: by itself, the word, or told to
             g.Unlock("itself");
             Check(!g.Locked && g.UnlockedBy == "itself" && !g.Gone(clock + Quiet * 2, Quiet), "unlocking by itself left it locked, or unnamed, or still 'gone'");
@@ -105,6 +146,22 @@ namespace LoafLock.Tests
             g = Locked("rukus");
             g.Unlock();
             Check(g.UnlockedBy == null, "an unlock from the window was put down to \"" + g.UnlockedBy + "\"");
+        }
+
+        // the auto unlock trusts the quiet only once a hook put in after the whole wait has heard
+        // ConfirmMs of it (a review found the regular renewal inside the wait wasn't enough)
+        static void TrustQuietRule()
+        {
+            // a minute's wait, the cat's last key at 5 s, the regular renewal at 60 s (inside the
+            // wait). At 65 s the wait is over, but that hook may have been taken out since
+            Check(!KeyHook.TrustQuiet(65000, 5000, 60000, 60000, 1500), "a hook renewed during the wait was trusted");
+            // a hook put in once the wait was over, after 1.5 s of quiet
+            Check(!KeyHook.TrustQuiet(66499, 5000, 65000, 60000, 1500), "a fresh hook was trusted before it had listened 1.5 s");
+            Check(KeyHook.TrustQuiet(66500, 5000, 65000, 60000, 1500), "a fresh hook that heard 1.5 s of quiet wasn't trusted");
+            // Windows' clock wraps after 49.7 days
+            int stir = int.MaxValue - 1000;
+            int fresh = unchecked(stir + 60000), now = unchecked(fresh + 1500);
+            Check(KeyHook.TrustQuiet(now, stir, fresh, 60000, 1500), "the rule broke where Windows' clock wraps");
         }
 
         static void GateHotkeyUnlocks()
@@ -421,6 +478,9 @@ namespace LoafLock.Tests
                 Pump(() => gate.UnlockComboKey == 0, "a key on its own reached the gate to unlock with");
                 options.HotkeyChanged(false, new Hotkey(Keys.F23, Keys.None));
                 Check(options.HotkeyLineText == "It unlocks too once Lock with a hotkey is ticked.", "with the hotkey off, the line says " + options.HotkeyLineText);
+                // the hotkey picker no longer says it only ever locks
+                using (var picker = new HotkeyForm(settings.Hotkey))
+                    Check(!TextOf(picker).Contains("It only locks"), "the hotkey picker still says the hotkey only locks the keyboard");
 
                 // the heads-up: locking by itself and unlocking by itself, both on
                 Check(!options.HeadsUpShown, "the heads-up shows with neither on");
@@ -458,6 +518,14 @@ namespace LoafLock.Tests
                 options.CatHoldChoice(250).Checked = true;
                 Pump(() => File.ReadAllText(Log.FilePath).Contains("cat detection: 4 keys, held 0.25 s (the defaults)"), "the log doesn't say the numbers are back to the defaults");
             }
+        }
+
+        // every bit of text a window shows, its children's too
+        static string TextOf(Control control)
+        {
+            var all = new System.Text.StringBuilder(control.Text);
+            foreach (Control child in control.Controls) all.Append(' ').Append(TextOf(child));
+            return all.ToString();
         }
 
         // every note fits in the corner, with a long name and a long hotkey; the hotkey is named

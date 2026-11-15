@@ -88,6 +88,7 @@ namespace LoafLock.Tests
             Run("look: windows turn dark and light again", Looks);
             Run("settings: 0.83's options are saved and read back; numbers not on offer read as the defaults", Settings083RoundTrip);
             Run("auto unlock: waits for the cat to come and go, every key up, and the whole wait", GateAutoUnlock);
+            Run("auto unlock: trusts the quiet only once a hook put in after the whole wait has heard it", TrustQuietRule);
             Run("hotkey unlock: only a fresh press of exactly its keys, never a repeat or a key on its own", GateHotkeyUnlocks);
             Run("cat detection: the keys and the time picked in Options", CatNumbers);
             Run("hook: unlocks by itself once the key's let go and the wait is over, never with a key down", LiveAutoUnlock);

@@ -36,8 +36,8 @@ namespace LoafLock
 
         public int RehookMs = 60000;  // how often the hooks are installed afresh
         public int TickMs = 500;      // how often lost releases are looked for
-        // The auto unlock trusts a silence only once a hook put in after the last key has heard
-        // it this long: a hook Windows took out without a word hears nothing either.
+        // The auto unlock trusts a silence only once a hook put in after the whole wait has heard
+        // it this long too: a hook Windows took out without a word hears nothing either.
         public int ConfirmMs = 1500;
 
         // raised on the hook's thread
@@ -317,15 +317,25 @@ namespace LoafLock
         }
 
         // The auto unlock, on the tick: the cat's been and gone, and nothing's been pressed since.
-        // A hook Windows took out quietly hears that same silence, so it counts only once a hook
-        // put in after the last key has heard it too: the first time, a fresh hook goes in, and
-        // the unlock waits ConfirmMs more. (Keys typed into an admin window never reach any hook
+        // A hook Windows took out quietly hears that same silence, so the quiet counts only once
+        // a hook put in after the whole wait has heard it too (TrustQuiet): when the wait is over,
+        // a fresh hook goes in, once, and the unlock waits ConfirmMs more. If putting it in fails,
+        // the regular renewal tries again. (Keys typed into an admin window never reach any hook
         // of LoafLock's, fresh or not: a known gap, as with locking.)
         void AutoUnlock(int now)
         {
             if (quietMs <= 0 || !gate.Gone(now, quietMs)) return;
-            if (freshHook - gate.LastStir > 0 && now - freshHook >= ConfirmMs) gate.Unlock("itself");
-            else if (now - lastRehook >= ConfirmMs) Reinstall();  // not every tick if renewing fails
+            if (TrustQuiet(now, gate.LastStir, freshHook, quietMs, ConfirmMs)) gate.Unlock("itself");
+            else if (lastRehook - gate.LastStir < quietMs) Reinstall();  // not tried yet since the wait ended
+        }
+
+        // The auto unlock's rule, apart so the tests can try it: a hook put in once the whole wait
+        // was over (quietMs or more after the last key) has heard confirmMs of quiet too. A hook
+        // renewed during the wait (the regular renewal every minute) could have been taken out
+        // since, and would hear nothing either. Times in ms, Windows' clock.
+        internal static bool TrustQuiet(int now, int lastStir, int freshHook, int quietMs, int confirmMs)
+        {
+            return freshHook - lastStir >= quietMs && now - freshHook >= confirmMs;
         }
 
         void DoUnlock()

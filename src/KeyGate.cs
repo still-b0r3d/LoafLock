@@ -41,15 +41,22 @@ namespace LoafLock
     //                cat detector made it). A lock set before the cat arrives holds until it's
     //                been and gone.
     //   lost keys:   Windows sometimes never sends a release (Ctrl+Alt+Del's screen, locking
-    //                the PC). Once unlocked, a key silent for longer than the slowest repeat
-    //                Windows is set to (LostReleaseMs) isn't held any more. Not while locked:
-    //                everything's dropped then anyway, and Windows repeats only the last key
-    //                pressed, so a key under a paw goes quiet while the cat lies on another.
+    //                the PC, a window running as administrator). Once unlocked, a dropped key
+    //                silent for longer than the slowest repeat Windows is set to
+    //                (LostReleaseMs) isn't held any more, and nor is any other key silent for
+    //                StaleMs. Not while locked: everything's dropped then anyway, and Windows
+    //                repeats only the last key pressed, so a key under a paw goes quiet while
+    //                the cat lies on another.
     //                A key pressed again after a long silence (a mouse button: pressed again at
     //                all) had its release lost, and counts as a new press.
     sealed class KeyGate
     {
         public int LostReleaseMs = 1500;
+        // A key that went by while cat detection watched, silent this long: its release never
+        // came. Kept, the next cat lock would drop it as part of the paw, and with it "down",
+        // neither the auto unlock nor the hotkey could undo that lock. No paw is this old when
+        // it locks (2.5 s at most: a slow settle).
+        public int StaleMs = 5000;
         public int HeldGraceMs = 600;  // the longest a held key waits before repeating, and a little more
         public int RepeatSplitMs;      // between a held key's repeat gap and its first wait; 0: can't tell them apart
         public const int LateMs = 150;
@@ -302,12 +309,13 @@ namespace LoafLock
                 if (IsMouse(vk)) Forget(vk);
         }
 
-        // once unlocked, releases that never came: a key silent this long isn't held any more
+        // once unlocked, releases that never came: a dropped key silent for LostReleaseMs, or any
+        // other key silent for StaleMs, isn't held any more
         public void Expire(int now)
         {
             if (Locked) return;
             for (int vk = 0; vk < 256; vk++)
-                if (dropping[vk] && now - seen[vk] > LostReleaseMs) Forget(vk);
+                if (down[vk] && now - seen[vk] > (dropping[vk] ? LostReleaseMs : StaleMs)) Forget(vk);
         }
 
         void Forget(int vk)
