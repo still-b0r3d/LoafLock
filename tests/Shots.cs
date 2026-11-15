@@ -37,7 +37,7 @@ namespace LoafLock.Tests
                     // options on: the heads-up shows)
                     var settings = new Settings
                     {
-                        UnlockWord = "rukus", CatName = "Biscuit", Look = look, HotkeyOn = true, HotkeyUnlocks = true,
+                        UnlockWord = "ruckus", CatName = "Biscuit", Look = look, HotkeyOn = true, HotkeyUnlocks = true,
                         IdleLock = true, AutoUnlock = true, CatDetection = true
                     };
                     settings.AddBlocked(212, DateTime.Now);
@@ -138,7 +138,7 @@ namespace LoafLock.Tests
         // itself ticked (the Options picture is its page)
         static Settings Example(Look look)
         {
-            var settings = new Settings { UnlockWord = "rukus", CatName = "Biscuit", Look = look, AutoUnlock = true };
+            var settings = new Settings { UnlockWord = "ruckus", CatName = "Biscuit", Look = look, AutoUnlock = true };
             settings.AddBlocked(212, DateTime.Now);
             settings.BlockedTotal = 4051;
             return settings;
