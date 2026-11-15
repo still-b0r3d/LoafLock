@@ -4,14 +4,18 @@ using System.Windows.Forms;
 
 namespace LoafLock
 {
-    // A key combo that locks the keyboard: "Ctrl+Alt+L". Windows' own hotkey feature
-    // (RegisterHotKey), not a hook, so an unlocked LoafLock still watches nothing. It only ever
-    // locks: while locked, the keyboard hook drops its keys before Windows sees a hotkey, so it
-    // can't unlock, and a cat can't either.
+    // A key combo that locks the keyboard: "Ctrl+Shift+L". Windows' own hotkey feature
+    // (RegisterHotKey), not a hook, so an unlocked LoafLock still watches nothing. While locked,
+    // the keyboard hook drops its keys before Windows sees a hotkey, so Windows' hotkey can't
+    // unlock. Unlocking with it (an option, 0.83) is up to the hook's gate, which spots the
+    // combo itself, like the unlock word.
     struct Hotkey
     {
         public readonly Keys Key;        // the key itself, e.g. Keys.L
         public readonly Keys Modifiers;  // Keys.Control, Keys.Alt, Keys.Shift together
+
+        // it can unlock too: a combo, never a key on its own (one paw could press Pause)
+        public bool CanUnlock { get { return Key != Keys.None && Modifiers != Keys.None; } }
 
         public Hotkey(Keys key, Keys modifiers)
         {

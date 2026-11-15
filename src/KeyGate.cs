@@ -30,6 +30,16 @@ namespace LoafLock
     //   the word:    fresh presses of its letters, in order, unlock. Repeats of a held key and
     //                Shift, Ctrl, Alt, Windows and Caps Lock don't count; any other key starts
     //                the word over. Mouse buttons leave it alone.
+    //   the hotkey:  when it unlocks too (an option), a fresh press of its key with exactly its
+    //                Ctrl / Shift / Alt down and nothing else at all, then that key let go with
+    //                nothing else gone down meanwhile. A cat lying across the keyboard holds
+    //                other keys too, and a paw landing on the combo and its neighbours puts
+    //                them down before the key comes up, so it can't. Never a key on its own
+    //                (Pause): one paw could press that.
+    //   gone:        for the auto unlock (an option), Gone says when nothing's down and nothing
+    //                has happened for a while, once this lock has blocked something (or the
+    //                cat detector made it). A lock set before the cat arrives holds until it's
+    //                been and gone.
     //   lost keys:   Windows sometimes never sends a release (Ctrl+Alt+Del's screen, locking
     //                the PC). Once unlocked, a key silent for longer than the slowest repeat
     //                Windows is set to (LostReleaseMs) isn't held any more. Not while locked:
@@ -56,8 +66,17 @@ namespace LoafLock
         int watchedSince;                          // when LoafLock last locked or renewed its hook
         int[] word = new int[0], fallback = new int[0];  // the word's letters as key codes, and where a near miss picks up
         int matched;                               // letters of the word typed so far
+        int comboKey;                              // the hotkey's key, while the hotkey unlocks too; else 0
+        bool comboCtrl, comboShift, comboAlt;      // ...and which of Ctrl, Shift and Alt go with it
+        int armed;                                 // the hotkey's key went down just so: it unlocks as it comes up, unless another key goes down first
+        bool pawed;                                // this lock has blocked something, or the cat detector made it
+        int lastStir;                              // when a key, a button or the locked mouse last did anything (ms)
 
         public bool Locked { get; private set; }
+
+        // how the gate unlocked itself last: "word", "hotkey" or "itself"; null when it was told
+        // to (from the window, the menu or the command line)
+        public string UnlockedBy { get; private set; }
 
         // presses dropped while locked, all told; a key held down keeps counting with every
         // repeat. Only the hook thread writes it; others read it with Volatile.Read.
@@ -85,6 +104,20 @@ namespace LoafLock
             matched = 0;
         }
 
+        // the hotkey's key while it unlocks too, else 0 (the tests read it)
+        internal int UnlockComboKey { get { return comboKey; } }
+
+        // The hotkey unlocks too: its key, and which of Ctrl, Shift and Alt go with it. A key of 0,
+        // or one with none of them (Pause on its own), and it doesn't.
+        public void SetUnlockHotkey(int key, bool ctrl, bool shift, bool alt)
+        {
+            bool held = ctrl || shift || alt;
+            comboKey = held && key > 0 && key < 256 && !IsModifier(key) && !IsMouse(key) ? key : 0;
+            comboCtrl = ctrl;
+            comboShift = shift;
+            comboAlt = alt;
+        }
+
         // now: Windows' clock (ms)
         public void Lock(int now)
         {
@@ -93,6 +126,10 @@ namespace LoafLock
             for (int vk = 0; vk < 256; vk++) down[vk] = dropping[vk];
             watchedSince = now;
             matched = 0;
+            armed = 0;
+            pawed = false;
+            lastStir = now;
+            UnlockedBy = null;
             Locked = true;
         }
 
@@ -111,6 +148,11 @@ namespace LoafLock
                 pending++;
             }
             matched = 0;
+            armed = 0;
+            // the cat's paw made this lock: the auto unlock waits for it to go (lastStir is the
+            // paw's last key, since the gate sees every key while watching)
+            pawed = true;
+            UnlockedBy = null;
             Locked = true;
         }
 
@@ -129,10 +171,38 @@ namespace LoafLock
             watchedSince = now;
         }
 
+        // told to unlock: from the window, the menu or the command line
         public void Unlock()
+        {
+            Unlock(null);
+        }
+
+        // by: "word", "hotkey", "itself", or null when told to
+        public void Unlock(string by)
         {
             Locked = false;
             matched = 0;
+            armed = 0;
+            UnlockedBy = by;
+        }
+
+        // when a key, a button or the locked mouse last did anything (ms, Windows' clock)
+        public int LastStir { get { return lastStir; } }
+
+        // The auto unlock's question: locked, something was blocked (or the cat detector made the
+        // lock), nothing's down, and nothing has happened for quietMs. now: Windows' clock (ms).
+        public bool Gone(int now, int quietMs)
+        {
+            if (!Locked || !pawed || now - lastStir < quietMs) return false;
+            for (int vk = 0; vk < 256; vk++)
+                if (down[vk]) return false;
+            return true;
+        }
+
+        // the mouse moved, or its wheel turned, while it's locked too: someone's still there
+        public void Stir(int time)
+        {
+            lastStir = time;
         }
 
         // One key event; true means drop it. time: when it happened (ms, Windows' clock); late:
@@ -143,6 +213,7 @@ namespace LoafLock
             // let through: not dropped, not counted, and the word doesn't see them (one held from
             // before the option was ticked finishes the old way)
             if (PassVolume && IsVolume(vk) && !dropping[vk]) return false;
+            lastStir = time;  // a press, a repeat or a release: something's still there
             bool repeat = pressed && down[vk];
             int gap = time - seen[vk];
             // "still down", but silent too long (or a mouse button, which never repeats, pressed
@@ -163,6 +234,8 @@ namespace LoafLock
                     dropping[vk] = paired[vk] = false;
                     pending--;
                 }
+                // the hotkey, let go with nothing else gone down since it went down
+                if (Locked && armed != 0 && vk == armed) Unlock("hotkey");
                 return drop;
             }
             if (dropping[vk])
@@ -170,7 +243,11 @@ namespace LoafLock
                 // its first repeat: one that comes this quickly means it was repeating already
                 if (!repeated[vk] && gap < RepeatSplitMs) paired[vk] = false;
                 repeated[vk] = true;
-                if (Locked) Blocked++;  // held since it was pressed while locked
+                if (Locked)
+                {
+                    Blocked++;  // held since it was pressed while locked
+                    pawed = true;
+                }
                 return true;
             }
             if (!Locked) return false;
@@ -180,8 +257,34 @@ namespace LoafLock
             paired[vk] = late < LateMs && !IsModifier(vk) && (IsMouse(vk) || time - watchedSince > HeldGraceMs);
             pending++;
             Blocked++;
-            if (!repeat) Letter(vk);
+            pawed = true;
+            if (!repeat)
+            {
+                if (vk != armed) armed = 0;  // something else went down: not the hotkey on its own after all
+                if (Combo(vk)) armed = vk;   // it unlocks as the key comes up
+                else Letter(vk);
+            }
             return true;
+        }
+
+        // the hotkey that unlocks too: its key, pressed with exactly its Ctrl / Shift / Alt down
+        // (left or right) and nothing else down at all
+        bool Combo(int vk)
+        {
+            if (comboKey == 0 || vk != comboKey) return false;
+            bool ctrl = false, shift = false, alt = false;
+            for (int k = 0; k < 256; k++)
+            {
+                if (!down[k] || k == vk) continue;
+                switch (k)
+                {
+                    case 0x11: case 0xA2: case 0xA3: ctrl = true; break;   // Ctrl, left, right
+                    case 0x10: case 0xA0: case 0xA1: shift = true; break;  // Shift
+                    case 0x12: case 0xA4: case 0xA5: alt = true; break;    // Alt
+                    default: return false;  // another key, Windows, Caps Lock or a mouse button
+                }
+            }
+            return ctrl == comboCtrl && shift == comboShift && alt == comboAlt;
         }
 
         // the press just dropped took long enough that Windows may have passed it on anyway: its
@@ -227,7 +330,7 @@ namespace LoafLock
             }
             while (matched > 0 && word[matched] != vk) matched = fallback[matched - 1];
             if (word[matched] == vk) matched++;
-            if (matched == word.Length) Unlock();
+            if (matched == word.Length) Unlock("word");
         }
 
         // Shift, Ctrl, Alt, Caps Lock and the Windows keys

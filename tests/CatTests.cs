@@ -351,12 +351,5 @@ namespace LoafLock.Tests
             File.WriteAllText(Settings.FilePath, "cat_detection=yes\r\n");
             Check(Settings.Load().CatDetection, "cat_detection=yes in settings.ini wasn't read");
         }
-
-        static void CatNoteFits()
-        {
-            using (var popup = new Popup())
-                foreach (string name in new[] { "", "Biscuit", "Sir Whiskers McFluffton" })
-                    Check(popup.Fits(Tray.CatNoteTitle, Tray.CatNoteText(name)), "the cat note doesn't fit with " + (name == "" ? "no name" : "the name " + name));
-        }
     }
 }

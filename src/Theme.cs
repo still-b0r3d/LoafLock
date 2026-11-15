@@ -11,11 +11,12 @@ namespace LoafLock
 
     // Light or dark windows. A window builds itself, then calls Apply; Apply again when Changed
     // fires (the option, or Windows switching its apps between light and dark). Labels say how
-    // they're coloured with their Tag: Theme.DimTag (grey) or Theme.BadTag (a problem, red);
-    // everything else takes the window's colours. High contrast always gets Windows' own colours.
+    // they're coloured with their Tag: Theme.DimTag (grey), Theme.BadTag (a problem, red) or
+    // Theme.GoldTag (a heads-up, the padlock's gold); everything else takes the window's colours.
+    // High contrast always gets Windows' own colours.
     static class Theme
     {
-        public const string DimTag = "dim", BadTag = "bad";
+        public const string DimTag = "dim", BadTag = "bad", GoldTag = "gold";
 
         public static bool Dark { get; private set; }
         public static event Action Changed;
@@ -55,6 +56,10 @@ namespace LoafLock
         public static Color Dim { get { return Dark ? Color.FromArgb(160, 160, 160) : SystemColors.GrayText; } }
         public static Color Gold { get { return Dark ? Color.FromArgb(240, 185, 60) : Color.FromArgb(160, 110, 0); } }
         public static Color Bad { get { return Dark ? Color.FromArgb(255, 120, 110) : Color.FromArgb(192, 32, 32); } }
+        // the grey strip down a window's side, and its footer (Options' pages); in high contrast
+        // the theme's own colours, since its text can't be read on a light grey
+        public static Color Strip { get { return SystemInformation.HighContrast ? SystemColors.Window : Dark ? Color.FromArgb(43, 43, 43) : Color.FromArgb(243, 243, 243); } }
+        public static Color Footer { get { return SystemInformation.HighContrast ? SystemColors.Control : Dark ? Color.FromArgb(43, 43, 43) : Color.FromArgb(243, 243, 243); } }
         static Color Field { get { return Color.FromArgb(48, 48, 48); } }   // dark only: text boxes, buttons
         static Color Hover { get { return Color.FromArgb(62, 62, 62); } }
         static Color Edge { get { return Color.FromArgb(96, 96, 96); } }
@@ -107,6 +112,7 @@ namespace LoafLock
                 }
                 else if (tag == DimTag) c.ForeColor = Dim;
                 else if (tag == BadTag) c.ForeColor = Bad;
+                else if (tag == GoldTag) c.ForeColor = SystemInformation.HighContrast ? SystemColors.WindowText : Gold;
                 Paint(c);
             }
         }

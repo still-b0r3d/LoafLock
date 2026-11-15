@@ -66,19 +66,14 @@ namespace LoafLock
             locker.LockedChanged += nowLocked =>
             {
                 if (!settings.NoteOnLock) return;
-                if (!nowLocked) popup.Nudge("Keyboard unlocked", settings.PawsBlocked + " today: " + locker.Today.ToString("N0"), false);
-                else if (locker.LockedBy == "idle")
-                    popup.Nudge("Keyboard locked by itself", "Nobody used the PC for " + settings.IdleMinutes + " minutes. Type your unlock word to get it back.", true);
-                else if (locker.LockedBy == "cat") popup.Nudge(CatNoteTitle, CatNoteText(settings.CatName), true);
-                else if (locker.MouseLocked) popup.Nudge("Keyboard and mouse locked", "Type your unlock word to get them back.", true);
-                else popup.Nudge("Keyboard locked", "Type your unlock word to get it back.", true);
+                string[] note = LockNote(settings, nowLocked, nowLocked ? locker.LockedBy : locker.UnlockedBy, locker.MouseLocked, locker.Today);
+                popup.Nudge(note[0], note[1], nowLocked);
             };
             locker.KeysBlocked += delegate
             {
                 if (!settings.NoteOnKeys) return;
                 if (locker.Loafing && settings.NoteOnLock) LoafNote();  // the loaf's note stays up while it goes on
-                else popup.Nudge(locker.MouseLocked ? "Keyboard and mouse are locked" : "Keyboard's locked",
-                    "Type your unlock word to get " + (locker.MouseLocked ? "them" : "it") + " back.\n" + settings.PawsBlocked + " today: " + locker.Today.ToString("N0"), true);
+                else popup.Nudge(locker.MouseLocked ? "Keyboard and mouse are locked" : "Keyboard's locked", KeyNoteText(settings, locker.MouseLocked, locker.Today), true);
             };
             // a long loaf: Ruckus nods off in the note (with the lock and unlock notes)
             locker.LongLoaf += delegate
@@ -128,9 +123,37 @@ namespace LoafLock
         // since a long one wouldn't fit in the heading
         internal const string CatNoteTitle = "Cat on the keyboard?";
 
-        internal static string CatNoteText(string catName)
+        internal static string CatNoteText(Settings s)
         {
-            return "Looks like " + (catName.Length > 0 ? catName : "a cat") + ", so the keyboard's locked. Type your unlock word to get it back.";
+            string name = s.CatName.Length > 0 ? s.CatName : "a cat";
+            // with the hotkey to name as well, the note says it in fewer words, so it still fits
+            return s.HotkeyUnlocksNow ? "Looks like " + name + ". " + HowBack(s, false) : "Looks like " + name + ", so the keyboard's locked. " + HowBack(s, false);
+        }
+
+        // how to get the keyboard (and the mouse: them) back, naming the hotkey when it unlocks too
+        internal static string HowBack(Settings s, bool them)
+        {
+            return s.HotkeyUnlocksNow ? "Type your unlock word or press " + s.Hotkey + "." : "Type your unlock word to get " + (them ? "them" : "it") + " back.";
+        }
+
+        // the note on every blocked key (an option): it has the paw count to fit in as well, so it
+        // keeps to the unlock word (a long name and a long hotkey together don't fit)
+        internal static string KeyNoteText(Settings s, bool mouse, int today)
+        {
+            return "Type your unlock word to get " + (mouse ? "them" : "it") + " back.\n" + s.PawsBlocked + " today: " + today.ToString("N0");
+        }
+
+        // the note when the keyboard locks or unlocks: { heading, line }. by: what locked it, or
+        // what unlocked it (Locker's LockedBy / UnlockedBy)
+        internal static string[] LockNote(Settings s, bool locked, string by, bool mouse, int today)
+        {
+            string count = s.PawsBlocked + " today: " + today.ToString("N0");
+            if (!locked && by == "itself") return new[] { "Keyboard unlocked by itself", "No paws for " + Settings.WaitText(s.AutoUnlockSeconds) + ".\n" + count };
+            if (!locked) return new[] { "Keyboard unlocked", count };
+            if (by == "idle") return new[] { "Keyboard locked by itself", "Nobody used the PC for " + s.IdleMinutes + " minutes. " + HowBack(s, false) };
+            if (by == "cat") return new[] { CatNoteTitle, CatNoteText(s) };
+            if (mouse) return new[] { "Keyboard and mouse locked", HowBack(s, true) };
+            return new[] { "Keyboard locked", HowBack(s, false) };
         }
 
         void LoafNote()

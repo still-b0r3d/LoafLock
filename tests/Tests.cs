@@ -84,8 +84,16 @@ namespace LoafLock.Tests
             Run("hook: watching for a cat lets every key by, locks on a paw, and lets go when turned off", LiveCatWatch);
             Run("cat detection: a paw locks the keyboard only, and the log says why", CatLocksTheKeyboardOnly);
             Run("options: cat detection saves right away and starts watching; never without a word", OptionsCatDetection);
-            Run("pop-up: the cat note fits, even with a long name", CatNoteFits);
+            Run("pop-up: every note fits, with a long name and a long hotkey; the hotkey named only while it unlocks", NotesFit);
             Run("look: windows turn dark and light again", Looks);
+            Run("settings: 0.83's options are saved and read back; numbers not on offer read as the defaults", Settings083RoundTrip);
+            Run("auto unlock: waits for the cat to come and go, every key up, and the whole wait", GateAutoUnlock);
+            Run("hotkey unlock: only a fresh press of exactly its keys, never a repeat or a key on its own", GateHotkeyUnlocks);
+            Run("cat detection: the keys and the time picked in Options", CatNumbers);
+            Run("hook: unlocks by itself once the key's let go and the wait is over, never with a key down", LiveAutoUnlock);
+            Run("locker: unlocking by itself reaches the note and the log; the window names the hotkey", LockerUnlocksByItself);
+            Run("options: six pages like TVFollow's, every option on its page, the defaults marked", OptionsPages);
+            Run("options: It unlocks too, the heads-up, the auto unlock's wait and cat detection's numbers", OptionsUnlocking);
             Run("remove my settings: the folder and the sign-in entry go", RemoveSettingsForgetsAll);
 
             try { Directory.Delete(home, true); } catch { }

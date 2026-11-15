@@ -31,6 +31,9 @@ namespace LoafLock
         public bool IsLocked { get; private set; }
         public bool MouseLocked { get; private set; }  // locked, with the mouse too
         public string LockedBy { get; private set; }   // what asked for the lock in force: "window", "idle", ...
+        // what undid the last lock: "window", "tray menu", "command line", "hotkey", "itself" (the
+        // auto unlock), or null for the unlock word
+        public string UnlockedBy { get; private set; }
 
         // why the hotkey isn't working (another app has it), or null
         public string HotkeyProblem { get; private set; }
@@ -68,6 +71,12 @@ namespace LoafLock
                 LockedBy = "cat";
                 Log.Write("lock from cat detection: looks like a cat (" + why + ")");
             });
+            // the hotkey or the auto unlock undid it: posted ahead of the unlock, so the note knows
+            hook.Unlocking += by => Post(delegate
+            {
+                UnlockedBy = by;
+                Log.Write(by == "itself" ? "unlock by itself: nothing pressed for " + Settings.WaitText(Settings.AutoUnlockSeconds) : "unlock from the " + by);
+            });
             poll.Tick += delegate
             {
                 bool blocked = CountBlocked(true);
@@ -95,7 +104,28 @@ namespace LoafLock
             // the hook gets installed afresh when the PC wakes up or someone signs back in
             SystemEvents.PowerModeChanged += PowerModeChanged;
             SystemEvents.SessionSwitch += SessionSwitched;
+            ApplyRules();
             ApplyWatch();
+        }
+
+        string ruleText;  // cat detection's numbers as last told to the log
+
+        // The auto unlock, the hotkey unlocking and cat detection's numbers, as the settings say;
+        // they reach the hook at once, even while locked. Options calls it after each change.
+        public void ApplyRules()
+        {
+            Settings s = Settings;
+            Hotkey h = s.Hotkey;
+            bool combo = s.HotkeyUnlocksNow;
+            hook.Rules(s.AutoUnlock ? s.AutoUnlockSeconds * 1000 : 0,
+                combo ? (int)h.Key : 0, (h.Modifiers & Keys.Control) != 0, (h.Modifiers & Keys.Shift) != 0, (h.Modifiers & Keys.Alt) != 0,
+                s.CatKeys, s.CatHoldMs);
+            // the log says cat detection's numbers when they change, and at the start when they
+            // aren't the usual ones
+            string text = s.CatKeys + " keys, held " + Settings.SecondsText(s.CatHoldMs);
+            bool usual = s.CatKeys == PawWatch.DefaultKeys && s.CatHoldMs == PawWatch.DefaultHoldMs;
+            if (ruleText != null ? text != ruleText : !usual) Log.Write("cat detection: " + text + (usual ? " (the defaults)" : ""));
+            ruleText = text;
         }
 
         // "Let the volume keys through" changed: it counts from the next lock, a cat's included
@@ -201,6 +231,7 @@ namespace LoafLock
         public void Unlock(string from)
         {
             Log.Write("unlock from the " + from);
+            UnlockedBy = from;
             hook.Unlock();
         }
 
@@ -244,7 +275,11 @@ namespace LoafLock
             MouseLocked = locked && hook.MouseInstalled;
             Log.Write(locked ? (MouseLocked ? "locked, the mouse too" : "locked") : "unlocked");
             loaf.Reset();
-            if (locked) poll.Start();
+            if (locked)
+            {
+                UnlockedBy = null;  // until something undoes this lock (and the word says nothing)
+                poll.Start();
+            }
             else
             {
                 CountBlocked(true);

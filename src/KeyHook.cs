@@ -13,6 +13,8 @@ namespace LoafLock
     // Unlocked, LoafLock doesn't see the keyboard or the mouse at all, unless cat detection is
     // on: then the keyboard hook stays in, every key goes past PawWatch and on to the apps
     // untouched, and the hook locks by itself when PawWatch says a cat's on the keyboard.
+    // While locked, the gate can also unlock by itself: the word, the hotkey when it unlocks too,
+    // and (on the tick) the auto unlock once the cat's been and gone.
     //
     // Windows skips a hook that takes longer than about 300 ms on a key, and after a few of those
     // it removes the hook without a word. So the callbacks do as little as they can and allocate
@@ -34,12 +36,16 @@ namespace LoafLock
 
         public int RehookMs = 60000;  // how often the hooks are installed afresh
         public int TickMs = 500;      // how often lost releases are looked for
+        // The auto unlock trusts a silence only once a hook put in after the last key has heard
+        // it this long: a hook Windows took out without a word hears nothing either.
+        public int ConfirmMs = 1500;
 
         // raised on the hook's thread
         public event Action<bool> LockChanged;  // true: locked; false: unlocked
         public event Action<string> Failed;     // the keyboard couldn't be locked; says why
         public event Action<string> Note;       // a line for the log (never which key)
         public event Action<string> Cat;        // cat detection is locking, just before LockChanged; says how it spotted one
+        public event Action<string> Unlocking;  // the gate unlocked by the hotkey or by itself, just before LockChanged: "hotkey" or "itself"
 
         readonly KeyGate gate;
         readonly PawWatch paw = new PawWatch();
@@ -54,9 +60,15 @@ namespace LoafLock
         volatile string word = "";
         volatile bool installed, mouseInstalled, mouseToo, volumeThrough;
         volatile int rehooks;
+        // Options, handed over by Rules and taken in on this thread: the auto unlock's wait (0:
+        // off), the hotkey when it unlocks too (key 0: it doesn't), cat detection's numbers
+        volatile int askedQuietMs, askedComboKey, askedCatKeys = PawWatch.DefaultKeys, askedCatHoldMs = PawWatch.DefaultHoldMs;
+        volatile bool askedCtrl, askedShift, askedAlt;
+        int quietMs;  // the auto unlock's wait, as this thread has it
         IntPtr hook, mouseHook;
         UIntPtr timer;
-        int lastRehook;
+        int lastRehook;  // when the hooks were last put in, or tried (ms)
+        int freshHook;   // when a keyboard hook last went in for sure (ms)
         bool reportedLocked, checkPosted;
         int slowKeys, slowest;
 
@@ -95,6 +107,34 @@ namespace LoafLock
         {
             watchOn = on;
             Post(CmdWatch);
+        }
+
+        // From Options, at once (even while locked): quietMs, unlock by itself after that long
+        // with nothing pressed (0: never); comboKey with ctrl / shift / alt, the hotkey when it
+        // unlocks too (0: it doesn't); catKeys and catHoldMs, cat detection's numbers.
+        public void Rules(int quietMs, int comboKey, bool ctrl, bool shift, bool alt, int catKeys, int catHoldMs)
+        {
+            askedQuietMs = quietMs;
+            askedComboKey = comboKey;
+            askedCtrl = ctrl;
+            askedShift = shift;
+            askedAlt = alt;
+            askedCatKeys = catKeys;
+            askedCatHoldMs = catHoldMs;
+            Post(CmdRules);
+        }
+
+        // for the tests: what this thread has in force (read from another thread: only to wait for)
+        internal int QuietMsInForce { get { return quietMs; } }
+        internal int CatKeysInForce { get { return paw.PileKeys; } }
+        internal int CatHoldMsInForce { get { return paw.HoldMs; } }
+
+        void DoRules()
+        {
+            quietMs = Math.Max(0, askedQuietMs);
+            gate.SetUnlockHotkey(askedComboKey, askedCtrl, askedShift, askedAlt);
+            paw.SetRules(askedCatKeys, askedCatHoldMs);
+            LookForCat();  // keys down now may count differently
         }
 
         public bool Watching { get { return watching; } }
@@ -138,6 +178,7 @@ namespace LoafLock
                         case CmdFreeMouse: DoFreeMouse(); break;
                         case CmdCheck: checkPosted = false; Check(); break;
                         case CmdWatch: DoWatch(); break;
+                        case CmdRules: DoRules(); break;
                         case CmdPaw: pawPosted = false; LookForCat(); break;
                         case WM_TIMER:
                             if (pawTimer != UIntPtr.Zero && (ulong)msg.wParam.ToInt64() == pawTimer.ToUInt64())
@@ -147,6 +188,7 @@ namespace LoafLock
                                 break;
                             }
                             gate.Expire(Environment.TickCount);
+                            AutoUnlock(Environment.TickCount);
                             if (Environment.TickCount - lastRehook >= RehookMs) Reinstall();
                             Check();
                             break;
@@ -274,6 +316,18 @@ namespace LoafLock
             return every * 1.5 < wait - 50 ? (int)((wait + every) / 2) : 0;
         }
 
+        // The auto unlock, on the tick: the cat's been and gone, and nothing's been pressed since.
+        // A hook Windows took out quietly hears that same silence, so it counts only once a hook
+        // put in after the last key has heard it too: the first time, a fresh hook goes in, and
+        // the unlock waits ConfirmMs more. (Keys typed into an admin window never reach any hook
+        // of LoafLock's, fresh or not: a known gap, as with locking.)
+        void AutoUnlock(int now)
+        {
+            if (quietMs <= 0 || !gate.Gone(now, quietMs)) return;
+            if (freshHook - gate.LastStir > 0 && now - freshHook >= ConfirmMs) gate.Unlock("itself");
+            else if (now - lastRehook >= ConfirmMs) Reinstall();  // not every tick if renewing fails
+        }
+
         void DoUnlock()
         {
             gate.Unlock();
@@ -284,8 +338,7 @@ namespace LoafLock
         void DoFreeMouse()
         {
             if (mouseHook == IntPtr.Zero) return;
-            RemoveMouse();
-            gate.ForgetMouse();
+            RemoveMouse();  // and the gate forgets the buttons
             Say("let go of the mouse");
             Check();
         }
@@ -314,7 +367,7 @@ namespace LoafLock
                 return false;
             }
             installed = true;
-            lastRehook = Environment.TickCount;
+            lastRehook = freshHook = Environment.TickCount;
             timer = SetTimer(IntPtr.Zero, UIntPtr.Zero, (uint)Math.Min(TickMs, RehookMs), IntPtr.Zero);
             return true;
         }
@@ -340,6 +393,7 @@ namespace LoafLock
             }
             UnhookWindowsHookEx(hook);
             hook = fresh;
+            freshHook = Environment.TickCount;
             if (mouseHook != IntPtr.Zero)
             {
                 fresh = SetWindowsHookEx(WH_MOUSE_LL, mouseProc, GetModuleHandle(null), 0);
@@ -354,12 +408,15 @@ namespace LoafLock
             rehooks++;
         }
 
+        // the gate won't see the buttons' releases now, so it forgets any it has down (one held at
+        // this moment would otherwise stay "down", and block the auto and hotkey unlocks for good)
         void RemoveMouse()
         {
             if (mouseHook == IntPtr.Zero) return;
             UnhookWindowsHookEx(mouseHook);
             mouseHook = IntPtr.Zero;
             mouseInstalled = false;
+            gate.ForgetMouse();
         }
 
         void Remove()
@@ -383,7 +440,19 @@ namespace LoafLock
         // once nothing is held from the locked time (watching for a cat, just the mouse hook)
         void Check()
         {
-            if (reportedLocked && !gate.Locked) Report(false);
+            if (reportedLocked && !gate.Locked)
+            {
+                // the hotkey or the auto unlock: said first, so the note knows (the word is told
+                // by "unlocked" alone, and the window, the menu and the command line say it themselves)
+                string by = gate.UnlockedBy;
+                Action<string> unlocking = Unlocking;
+                if ((by == "hotkey" || by == "itself") && unlocking != null)
+                {
+                    try { unlocking(by); }
+                    catch (Exception e) { Say("couldn't pass on the unlock: " + e.Message); }
+                }
+                Report(false);
+            }
             if (!gate.Busy)
             {
                 if (watching) RemoveMouse();
@@ -451,9 +520,15 @@ namespace LoafLock
                     {
                         int message = wParam.ToInt32();
                         int vk = Button(message, Marshal.ReadInt32(lParam, 8));
-                        bool drop = vk == 0
-                            ? gate.Locked
-                            : Judge(vk, message == WM_LBUTTONDOWN || message == WM_RBUTTONDOWN || message == WM_MBUTTONDOWN || message == WM_XBUTTONDOWN, Marshal.ReadInt32(lParam, 16));
+                        bool drop;
+                        if (vk == 0)
+                        {
+                            // a move or the wheel: dropped while locked, and for the auto unlock
+                            // a sign that someone's still at the mouse
+                            drop = gate.Locked;
+                            if (drop) gate.Stir(Marshal.ReadInt32(lParam, 16));
+                        }
+                        else drop = Judge(vk, message == WM_LBUTTONDOWN || message == WM_RBUTTONDOWN || message == WM_MBUTTONDOWN || message == WM_XBUTTONDOWN, Marshal.ReadInt32(lParam, 16));
                         if (drop) return (IntPtr)1;
                     }
                 }
@@ -517,7 +592,7 @@ namespace LoafLock
             WM_MBUTTONDOWN = 0x0207, WM_MBUTTONUP = 0x0208, WM_XBUTTONDOWN = 0x020B, WM_XBUTTONUP = 0x020C;
         const uint WM_QUIT = 0x0012, WM_TIMER = 0x0113, WM_APP = 0x8000;
         const uint CmdLock = WM_APP + 1, CmdUnlock = WM_APP + 2, CmdRehook = WM_APP + 3, CmdCheck = WM_APP + 4, CmdFreeMouse = WM_APP + 5,
-            CmdWatch = WM_APP + 6, CmdPaw = WM_APP + 7;
+            CmdWatch = WM_APP + 6, CmdPaw = WM_APP + 7, CmdRules = WM_APP + 8;
 
         delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
 

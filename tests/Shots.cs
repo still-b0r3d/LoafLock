@@ -24,6 +24,8 @@ namespace LoafLock.Tests
         {
             Settings.Dir = Path.Combine(Path.GetTempPath(), "LoafLockShots-" + Guid.NewGuid().ToString("N"));
             Instance.Name = @"Local\LoafLockShots-" + Guid.NewGuid().ToString("N");
+            // a Run key of its own, so the Options window never reads or changes the real one
+            StartWithWindows.RunKeyPath = @"Software\LoafLockShots-" + Guid.NewGuid().ToString("N");
             try
             {
                 foreach (Look look in new[] { Look.Light, Look.Dark })
@@ -31,7 +33,13 @@ namespace LoafLock.Tests
                     Theme.Set(look);
                     string to = Path.Combine(folder, look.ToString().ToLowerInvariant());
                     Directory.CreateDirectory(to);
-                    var settings = new Settings { UnlockWord = "rukus", CatName = "Biscuit", Look = look };
+                    // 0.83's options ticked, so every page has something to show (both "by itself"
+                    // options on: the heads-up shows)
+                    var settings = new Settings
+                    {
+                        UnlockWord = "rukus", CatName = "Biscuit", Look = look, HotkeyOn = true, HotkeyUnlocks = true,
+                        IdleLock = true, AutoUnlock = true, CatDetection = true
+                    };
                     settings.AddBlocked(212, DateTime.Now);
                     settings.BlockedTotal = 4051;
                     using (var locker = new Locker(settings, new KeyHook(new KeyGate(), true)))
@@ -47,7 +55,13 @@ namespace LoafLock.Tests
                         using (var options = new OptionsForm(locker) { Quiet = true })
                         {
                             ShowOffScreen(options);
-                            Shoot(options, Path.Combine(to, "options.png"));
+                            int n = 1;
+                            foreach (string page in options.PageKeys)
+                            {
+                                options.ShowPage(page);
+                                Application.DoEvents();
+                                Shoot(options, Path.Combine(to, "options-" + n++ + "-" + page.Replace(' ', '-') + ".png"));
+                            }
                         }
                     }
                     using (var word = new WordForm("") { Quiet = true })
@@ -70,6 +84,17 @@ namespace LoafLock.Tests
                     Shoot(popup, Path.Combine(folder, "note-loafing.png"));
                     popup.Set("Keyboard locked by itself", "Nobody used the PC for 10 minutes. Type your unlock word to get it back.", true);
                     Shoot(popup, Path.Combine(folder, "note-idle.png"));
+                    // 0.83: unlocked by itself, and the hotkey named while it unlocks too
+                    var example = new Settings { CatName = "Biscuit", AutoUnlock = true, HotkeyOn = true, HotkeyUnlocks = true };
+                    string[] note = Tray.LockNote(example, false, "itself", false, 212);
+                    popup.Set(note[0], note[1], false);
+                    Shoot(popup, Path.Combine(folder, "note-unlocked-by-itself.png"));
+                    note = Tray.LockNote(example, true, "tray menu", false, 212);
+                    popup.Set(note[0], note[1], true);
+                    Shoot(popup, Path.Combine(folder, "note-locked-hotkey.png"));
+                    note = Tray.LockNote(example, true, "cat", false, 212);
+                    popup.Set(note[0], note[1], true);
+                    Shoot(popup, Path.Combine(folder, "note-cat-hotkey.png"));
                 }
                 Console.WriteLine("shots in " + folder);
                 return 0;
@@ -109,10 +134,11 @@ namespace LoafLock.Tests
 
         static readonly Color Backdrop = Color.FromArgb(232, 234, 237);
 
-        // what the pictures show: an unlock word, Biscuit, and a busy day's paws
+        // what the pictures show: an unlock word, Biscuit, a busy day's paws, and unlocking by
+        // itself ticked (the Options picture is its page)
         static Settings Example(Look look)
         {
-            var settings = new Settings { UnlockWord = "rukus", CatName = "Biscuit", Look = look };
+            var settings = new Settings { UnlockWord = "rukus", CatName = "Biscuit", Look = look, AutoUnlock = true };
             settings.AddBlocked(212, DateTime.Now);
             settings.BlockedTotal = 4051;
             return settings;
@@ -178,6 +204,7 @@ namespace LoafLock.Tests
                     }
                     using (var options = new OptionsForm(locker))
                     {
+                        options.ShowPage(OptionsForm.ByItselfPage);
                         ShowOnBackdrop(options, spot);
                         Screenshot(options, Path.Combine(folder, "5-options.png"));
                     }

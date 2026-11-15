@@ -1,3 +1,5 @@
+using System;
+
 namespace LoafLock
 {
     // Cat detection (experimental, an option): whether the keys down right now look like a cat
@@ -19,8 +21,25 @@ namespace LoafLock
     // only 2 keys at once (some cheap ones and laptops) can never show it a cat.
     sealed class PawWatch
     {
-        public int PileKeys = 4, PawKeys = 3;
-        public int PawMs = 40, HoldMs = 250, SettleMs = 1500, BurstMs = 1000;
+        // Options → Your cat (0.83): how many keys it takes, and how long they have to stay down.
+        // A paw that lands at once and a slow settle take one key fewer than a pile. Nothing longer
+        // than half a second: Windows starts repeating a held key after its repeat delay (0.25 to
+        // 1 s, 0.5 s out of the box), and the cat's key would repeat into the video meanwhile.
+        public static readonly int[] KeyChoices = { 3, 4, 5, 6 }, HoldChoices = { 100, 250, 500 };
+        public const int DefaultKeys = 4, DefaultHoldMs = 250;
+
+        public int PileKeys = DefaultKeys, PawKeys = DefaultKeys - 1;
+        public int PawMs = 40, HoldMs = DefaultHoldMs, SettleMs = 1500, BurstMs = 1000;
+
+        // the numbers from Options (one on offer, or the default)
+        public void SetRules(int keys, int holdMs)
+        {
+            if (Array.IndexOf(KeyChoices, keys) < 0) keys = DefaultKeys;
+            if (Array.IndexOf(HoldChoices, holdMs) < 0) holdMs = DefaultHoldMs;
+            PileKeys = keys;
+            PawKeys = keys - 1;
+            HoldMs = holdMs;
+        }
         // a key silent this long stops counting: its release may never have come (Ctrl+Alt+Del's
         // screen, locking the PC). A key under a resting paw goes quiet too, since Windows repeats
         // only the last key pressed, but every rule has fired long before then.

@@ -162,9 +162,10 @@ namespace LoafLock
             bool locked = locker.IsLocked;
             Settings s = locker.Settings;
             rukus.Image = locked ? lockedPicture : unlockedPicture;
+            string hotkey = s.HotkeyUnlocksNow ? s.Hotkey.ToString() : null;
             state.Text = !locked ? "Keyboard unlocked."
-                : locker.MouseLocked ? "Keyboard and mouse locked. Type your unlock word."
-                : "Keyboard locked. Type your unlock word, or click Unlock.";
+                : locker.MouseLocked ? "Keyboard and mouse locked. Type your unlock word" + (hotkey != null ? " or press " + hotkey : "") + "."
+                : "Keyboard locked. Type your unlock word, " + (hotkey != null ? "press " + hotkey + ", " : "") + "or click Unlock.";
             state.ForeColor = locked ? Theme.Gold : Theme.Dim;
             lockButton.Text = locked ? "Unlock keyboard" : "Lock keyboard";
             lockItem.Text = locked ? "&Unlock keyboard" : "&Lock keyboard";
@@ -179,6 +180,7 @@ namespace LoafLock
             MessageBox.Show(this,
                 "If the keyboard stays locked:\n\n" +
                 "•  Type your unlock word" + (locker.Settings.HasWord ? " (" + locker.Settings.UnlockWord + ")" : "") + ".\n" +
+                (locker.Settings.HotkeyUnlocksNow ? "•  Or press your hotkey, " + locker.Settings.Hotkey + ": it unlocks too.\n" : "") +
                 "•  Or click Unlock keyboard, here or in Ruckus's menu in the taskbar corner.\n" +
                 "•  Mouse locked too? Press Ctrl+Alt+Del and pick Lock, then sign back in: the mouse works again, so you can click Unlock.\n" +
                 "•  Still stuck? Press Ctrl+Alt+Del, open Task Manager and end LoafLock. The keyboard comes back at once.",

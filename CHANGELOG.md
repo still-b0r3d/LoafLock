@@ -3,6 +3,31 @@
 Each version's exe says its build (the commit it was made from) in the window, in
 Ruckus's menu and under Help → About.
 
+## 0.83
+
+The first release since 0.8, so 0.81's changes (below) come with it.
+
+- **Unlocking by itself** (Options → By itself, off to start with): once the cat's been gone
+  for 30 seconds to 5 minutes, the keyboard unlocks. Gone means nothing pressed or held down
+  for that long, once the lock has blocked a paw, so a lock you set before the cat comes
+  stays on until it's been and gone. Before trusting the quiet, LoafLock puts its keyboard
+  watch in afresh and listens a moment more, in case Windows had quietly taken the old one
+  out. The note says "Keyboard unlocked by itself", and the log says how long nothing was
+  pressed.
+- **The hotkey can unlock too** (Options → Locking → It unlocks too, off to start with). It
+  unlocks as you let go, and only counts with just its keys down and nothing else pressed
+  before you let go, so a cat lying across the keyboard can't do it, nor a paw landing on the
+  hotkey and the keys next to it. A key on its own (Pause, Scroll Lock, F13 to F24) still
+  only locks. While it's on, the window, the note on locking and the help for a stuck
+  keyboard name it.
+- With locking by itself and unlocking by itself both on, Options says what that means.
+- **Cat detection's numbers** can be changed: how many keys (3 to 6) and how long they stay
+  down (0.1, 0.25 or 0.5 s). The numbers it used before, 4 keys and 0.25 s, are the
+  defaults, and the log gives the numbers when they change.
+- **Options in pages**, like TVFollow's settings: Locking, By itself, Your cat, Notes, Look
+  and Starting, listed down the left with an icon each. In every row of choices, the one
+  LoafLock starts with says "(default)".
+
 ## 0.81
 
 - **Cat detection** (experimental, off to start with), in Options under "Your cat". It locks

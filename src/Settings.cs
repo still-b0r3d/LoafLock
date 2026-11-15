@@ -25,8 +25,12 @@ namespace LoafLock
 
         public bool LockMouse;  // lock the mouse too: the pointer, the buttons and the wheel
 
-        public bool HotkeyOn;                     // lock with a hotkey (it never unlocks)
+        public bool HotkeyOn;                     // lock with a hotkey
         public Hotkey Hotkey = Hotkey.Default;
+        public bool HotkeyUnlocks;                // ...and it unlocks too (never a key on its own; see KeyGate)
+
+        // the hotkey unlocks, as things stand: on, ticked, and not a key on its own
+        public bool HotkeyUnlocksNow { get { return HotkeyOn && HotkeyUnlocks && Hotkey.CanUnlock; } }
 
         public bool VolumeThrough;  // Mute, Volume Down and Volume Up still work while locked
 
@@ -34,8 +38,17 @@ namespace LoafLock
         public bool IdleLock;
         public int IdleMinutes = Idle.DefaultMinutes;
 
-        // lock when it looks like a cat is on the keyboard (experimental; see PawWatch)
+        // unlock by itself once the cat's been gone AutoUnlockSeconds: nothing down and nothing
+        // pressed for that long, after the lock blocked something (see KeyGate.Gone)
+        public bool AutoUnlock;
+        public int AutoUnlockSeconds = DefaultAutoUnlockSeconds;
+        public static readonly int[] AutoUnlockChoices = { 30, 60, 120, 300 };
+        public const int DefaultAutoUnlockSeconds = 60;
+
+        // lock when it looks like a cat is on the keyboard (experimental; see PawWatch), and the
+        // numbers it goes by
         public bool CatDetection;
+        public int CatKeys = PawWatch.DefaultKeys, CatHoldMs = PawWatch.DefaultHoldMs;
 
         // "Paws blocked by Biscuit": the cat's name, or "" for none
         public string CatName = "";
@@ -60,6 +73,20 @@ namespace LoafLock
                 if (!char.IsControl(c)) kept.Append(c);
             string clean = kept.ToString().Trim();
             return clean.Length > MaxNameLength ? clean.Substring(0, MaxNameLength).TrimEnd() : clean;
+        }
+
+        // the auto unlock's wait in words: "30 seconds", "a minute", "2 minutes"
+        public static string WaitText(int seconds)
+        {
+            if (seconds == 60) return "a minute";
+            if (seconds % 60 == 0) return seconds / 60 + " minutes";
+            return seconds + " seconds";
+        }
+
+        // a short time in seconds: "0.1 s", "0.25 s", "1.5 s"
+        public static string SecondsText(int ms)
+        {
+            return (ms / 1000.0).ToString("0.##", CultureInfo.InvariantCulture) + " s";
         }
 
         public int TodayCount(DateTime now)
@@ -135,10 +162,15 @@ namespace LoafLock
                         if (Hotkey.TryParse(value, out hotkey)) s.Hotkey = hotkey;
                         else Log.Write("settings: the hotkey in settings.ini isn't one LoafLock takes, so it was ignored");
                         break;
+                    case "hotkey_unlocks": s.HotkeyUnlocks = !IsNo(value); break;
                     case "volume_through": s.VolumeThrough = !IsNo(value); break;
                     case "idle_lock": s.IdleLock = !IsNo(value); break;
                     case "idle_minutes": if (int.TryParse(value, out number) && Array.IndexOf(Idle.Choices, number) >= 0) s.IdleMinutes = number; break;
+                    case "auto_unlock": s.AutoUnlock = !IsNo(value); break;
+                    case "auto_unlock_seconds": if (int.TryParse(value, out number) && Array.IndexOf(AutoUnlockChoices, number) >= 0) s.AutoUnlockSeconds = number; break;
                     case "cat_detection": s.CatDetection = !IsNo(value); break;
+                    case "cat_keys": if (int.TryParse(value, out number) && Array.IndexOf(PawWatch.KeyChoices, number) >= 0) s.CatKeys = number; break;
+                    case "cat_hold_ms": if (int.TryParse(value, out number) && Array.IndexOf(PawWatch.HoldChoices, number) >= 0) s.CatHoldMs = number; break;
                     case "cat_name": s.CatName = CleanName(value); break;
                     case "look":
                         switch (value.ToLowerInvariant())
@@ -170,10 +202,15 @@ namespace LoafLock
                 "lock_mouse=" + (LockMouse ? "yes" : "no") + "\r\n" +
                 "hotkey_on=" + (HotkeyOn ? "yes" : "no") + "\r\n" +
                 "hotkey=" + Hotkey + "\r\n" +
+                "hotkey_unlocks=" + (HotkeyUnlocks ? "yes" : "no") + "\r\n" +
                 "volume_through=" + (VolumeThrough ? "yes" : "no") + "\r\n" +
                 "idle_lock=" + (IdleLock ? "yes" : "no") + "\r\n" +
                 "idle_minutes=" + IdleMinutes + "\r\n" +
+                "auto_unlock=" + (AutoUnlock ? "yes" : "no") + "\r\n" +
+                "auto_unlock_seconds=" + AutoUnlockSeconds + "\r\n" +
                 "cat_detection=" + (CatDetection ? "yes" : "no") + "\r\n" +
+                "cat_keys=" + CatKeys + "\r\n" +
+                "cat_hold_ms=" + CatHoldMs + "\r\n" +
                 "cat_name=" + CatName + "\r\n" +
                 "look=" + Look.ToString().ToLowerInvariant() + "\r\n" +
                 "blocked_total=" + BlockedTotal + "\r\n" +
